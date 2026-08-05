@@ -39,3 +39,53 @@ LIGHT_COLOR_ACCENT = "#219A21"
 LIGHT_COLOR_ACCENT_ACTIVE = "#1B7E1B"
 LIGHT_COLOR_BORDER = "#D6D6D6"
 LIGHT_COLOR_ERROR = "#C62828"
+
+
+def detect_system_theme() -> str:
+    """Best-effort Windows light/dark detection. Falls back to 'dark'."""
+    try:
+        import winreg
+
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        )
+        value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        return "light" if value == 1 else "dark"
+    except OSError:
+        return "dark"
+
+
+def resolve_theme(theme_name: str) -> str:
+    if theme_name == "system":
+        return detect_system_theme()
+    if theme_name not in ("dark", "light"):
+        return "dark"
+    return theme_name
+
+
+def get_colors(theme_name: str) -> dict:
+    """Return a color dict for 'dark' or 'light' (call resolve_theme first)."""
+    if theme_name == "light":
+        return {
+            "background": LIGHT_COLOR_BACKGROUND,
+            "panel": LIGHT_COLOR_PANEL,
+            "panel_alt": LIGHT_COLOR_PANEL_ALT,
+            "text_primary": LIGHT_COLOR_TEXT_PRIMARY,
+            "text_secondary": LIGHT_COLOR_TEXT_SECONDARY,
+            "accent": LIGHT_COLOR_ACCENT,
+            "accent_active": LIGHT_COLOR_ACCENT_ACTIVE,
+            "border": LIGHT_COLOR_BORDER,
+            "error": LIGHT_COLOR_ERROR,
+        }
+    return {
+        "background": COLOR_BACKGROUND,
+        "panel": COLOR_PANEL,
+        "panel_alt": COLOR_PANEL_ALT,
+        "text_primary": COLOR_TEXT_PRIMARY,
+        "text_secondary": COLOR_TEXT_SECONDARY,
+        "accent": COLOR_ACCENT,
+        "accent_active": COLOR_ACCENT_ACTIVE,
+        "border": COLOR_BORDER,
+        "error": COLOR_ERROR,
+    }
