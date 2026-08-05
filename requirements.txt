@@ -1,0 +1,3 @@
+# Cinqic Calculator has no third-party runtime dependencies.
+# The interface is built on Python's standard library (tkinter/ttk),
+# which keeps the Windows package small and avoids extra bundling risk.
