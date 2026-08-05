@@ -102,7 +102,9 @@ class MainWindow(tk.Tk):
             self.nav_buttons[name] = button
 
         self.views = {
-            "Calculator": CalculatorView(self.content_frame, c, self.history, on_status=self.set_status),
+            "Calculator": CalculatorView(
+                self.content_frame, c, self.history, self.settings, on_status=self.set_status
+            ),
             "Convert": ConverterView(self.content_frame, c, on_status=self.set_status),
             "Financial": FinancialView(self.content_frame, c, on_status=self.set_status),
             "History": HistoryView(

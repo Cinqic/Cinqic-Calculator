@@ -56,7 +56,7 @@ class SettingsView(tk.Frame):
             self,
             text="Remember calculator memory (M) between sessions",
             variable=self.persist_memory_var,
-            command=self._save,
+            command=self._on_persist_memory_toggle,
             bg=c["background"],
             fg=c["text_primary"],
             selectcolor=c["panel_alt"],
@@ -81,18 +81,21 @@ class SettingsView(tk.Frame):
 
     def _on_theme_change(self):
         self.settings.set("theme", self.theme_var.get())
-        self._save()
+        self.settings.save()
         self.on_theme_change(self.theme_var.get())
 
     def _on_save_history_toggle(self):
         enabled = self.save_history_var.get()
         self.settings.set("save_history", enabled)
         self.history.set_enabled(enabled)
-        self._save()
+        self.settings.save()
         self.on_status("History saving " + ("enabled" if enabled else "disabled"))
 
-    def _save(self):
-        self.settings.set("persist_memory", self.persist_memory_var.get())
+    def _on_persist_memory_toggle(self):
+        enabled = self.persist_memory_var.get()
+        self.settings.set("persist_memory", enabled)
+        if not enabled:
+            self.settings.set("memory_value", None)
         self.settings.save()
         self.on_status("Settings saved")
 

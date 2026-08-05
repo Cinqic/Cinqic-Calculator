@@ -35,17 +35,26 @@ _OPERATORS = {"÷": "/", "×": "*", "-": "-", "+": "+"}
 
 
 class CalculatorView(tk.Frame):
-    def __init__(self, parent, colors, history, on_status=None):
+    def __init__(self, parent, colors, history, settings, on_status=None):
         super().__init__(parent, bg=colors["background"])
         self.colors = colors
         self.history = history
+        self.settings = settings
         self.on_status = on_status or (lambda text: None)
         self.calc = Calculator()
         self.scientific_visible = False
         self._buttons = []
+        self.mc_button = None
+        self.mr_button = None
+
+        if self.settings.get("persist_memory", False):
+            stored_memory = self.settings.get("memory_value")
+            if isinstance(stored_memory, (int, float)) and not isinstance(stored_memory, bool):
+                self.calc.memory = float(stored_memory)
 
         self._build()
         self.bind_all_keys()
+        self._refresh()
 
     # ------------------------------------------------------------------
     def _build(self):
@@ -127,7 +136,6 @@ class CalculatorView(tk.Frame):
         c = self.colors
         for widget in self.grid_frame.winfo_children():
             widget.destroy()
-        self._buttons = [b for b in self._buttons if not str(b) or True]
 
         for row_index, row in enumerate(STANDARD_ROWS):
             for col_index, value in enumerate(row):
@@ -146,6 +154,10 @@ class CalculatorView(tk.Frame):
                 button.grid(row=row_index, column=col_index, padx=3, pady=3, sticky="nsew")
                 if value in _MEMORY_BUTTONS:
                     ToolTip(button, {"MC": "Memory clear", "MR": "Memory recall", "M+": "Memory add", "M-": "Memory subtract", "MS": "Memory store"}[value], c)
+                if value == "MC":
+                    self.mc_button = button
+                elif value == "MR":
+                    self.mr_button = button
 
         for col in range(5):
             self.grid_frame.grid_columnconfigure(col, weight=1)
@@ -192,14 +204,18 @@ class CalculatorView(tk.Frame):
             self._record_history(expression)
         elif value == "MC":
             self.calc.memory_clear()
+            self._persist_memory_if_enabled()
         elif value == "MR":
             self.calc.memory_recall()
         elif value == "M+":
             self.calc.memory_add()
+            self._persist_memory_if_enabled()
         elif value == "M-":
             self.calc.memory_subtract()
+            self._persist_memory_if_enabled()
         elif value == "MS":
             self.calc.memory_store()
+            self._persist_memory_if_enabled()
         elif value.isdigit():
             self.calc.input_digit(value)
         self._refresh()
@@ -217,6 +233,16 @@ class CalculatorView(tk.Frame):
     def _refresh(self):
         self.display_var.set(self.calc.display)
         self.memory_indicator.config(text="M" if self.calc.has_memory else "")
+        memory_state = "normal" if self.calc.has_memory else "disabled"
+        if self.mc_button is not None:
+            self.mc_button.config(state=memory_state)
+        if self.mr_button is not None:
+            self.mr_button.config(state=memory_state)
+
+    def _persist_memory_if_enabled(self):
+        if self.settings.get("persist_memory", False):
+            self.settings.set("memory_value", self.calc.memory)
+            self.settings.save()
 
     # ------------------------------------------------------------------
     def copy_result(self):
@@ -257,18 +283,28 @@ class CalculatorView(tk.Frame):
 
     # ------------------------------------------------------------------
     def bind_all_keys(self):
+        # These bindings are attached to the toplevel so calculator keyboard
+        # shortcuts work without needing focus, but that means they would
+        # otherwise fire no matter which view is currently showing - e.g.
+        # typing into a Financial or Convert entry field would silently
+        # drive the (invisible) calculator's state too. Guard every handler
+        # on visibility so keystrokes only affect the calculator while it's
+        # the active view.
         top = self.winfo_toplevel()
         for digit in "0123456789":
-            top.bind(f"<Key-{digit}>", lambda e, d=digit: self._on_button(d))
-        top.bind("<Key-period>", lambda e: self._on_button("."))
-        top.bind("<Key-plus>", lambda e: self._on_button("+"))
-        top.bind("<Key-minus>", lambda e: self._on_button("-"))
-        top.bind("<Key-asterisk>", lambda e: self._on_button("×"))
-        top.bind("<Key-slash>", lambda e: self._on_button("÷"))
-        top.bind("<Return>", lambda e: self._on_button("="))
-        top.bind("<KP_Enter>", lambda e: self._on_button("="))
-        top.bind("<Escape>", lambda e: self._on_button("CE"))
-        top.bind("<BackSpace>", lambda e: self._backspace())
+            top.bind(f"<Key-{digit}>", lambda e, d=digit: self._on_button(d) if self._is_active() else None)
+        top.bind("<Key-period>", lambda e: self._on_button(".") if self._is_active() else None)
+        top.bind("<Key-plus>", lambda e: self._on_button("+") if self._is_active() else None)
+        top.bind("<Key-minus>", lambda e: self._on_button("-") if self._is_active() else None)
+        top.bind("<Key-asterisk>", lambda e: self._on_button("×") if self._is_active() else None)
+        top.bind("<Key-slash>", lambda e: self._on_button("÷") if self._is_active() else None)
+        top.bind("<Return>", lambda e: self._on_button("=") if self._is_active() else None)
+        top.bind("<KP_Enter>", lambda e: self._on_button("=") if self._is_active() else None)
+        top.bind("<Escape>", lambda e: self._on_button("CE") if self._is_active() else None)
+        top.bind("<BackSpace>", lambda e: self._backspace() if self._is_active() else None)
+
+    def _is_active(self) -> bool:
+        return bool(self.winfo_exists()) and bool(self.winfo_ismapped())
 
     def _backspace(self):
         self.calc.backspace()

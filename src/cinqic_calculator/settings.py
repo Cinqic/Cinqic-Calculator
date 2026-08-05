@@ -11,6 +11,7 @@ DEFAULT_SETTINGS = {
     "save_history": True,
     "degree_mode": True,
     "persist_memory": False,
+    "memory_value": None,
     "window_width": 900,
     "window_height": 720,
     "window_x": None,
