@@ -101,3 +101,113 @@ def test_keyboard_shortcuts_mapped(app_window):
     assert "<Control-Key-comma>" in bindings
     assert "<Key-F1>" in bindings
     assert "<Control-Key-l>" in bindings
+
+
+# ---------------------------------------------------------------------------
+# Regression tests: v1.0.1 memory-state and keyboard-leak fixes
+# ---------------------------------------------------------------------------
+def _find_entries(widget):
+    found = []
+    for child in widget.winfo_children():
+        if child.winfo_class() == "Entry":
+            found.append(child)
+        found.extend(_find_entries(child))
+    return found
+
+
+def test_memory_indicator_and_buttons_disabled_when_empty(app_window):
+    app_window.show_view("Calculator")
+    calc_view = app_window.views["Calculator"]
+    calc_view.calc.memory_clear()
+    calc_view._refresh()
+    app_window.update()
+
+    assert calc_view.memory_indicator.cget("text") == ""
+    assert str(calc_view.mc_button.cget("state")) == "disabled"
+    assert str(calc_view.mr_button.cget("state")) == "disabled"
+
+
+def test_memory_buttons_enable_after_store_and_disable_after_clear(app_window):
+    app_window.show_view("Calculator")
+    calc_view = app_window.views["Calculator"]
+    calc_view.calc.clear_all()
+    calc_view._refresh()
+
+    calc_view._on_button("5")
+    calc_view._on_button("MS")
+    app_window.update()
+    assert calc_view.memory_indicator.cget("text") == "M"
+    assert str(calc_view.mc_button.cget("state")) == "normal"
+    assert str(calc_view.mr_button.cget("state")) == "normal"
+
+    calc_view._on_button("MC")
+    app_window.update()
+    assert calc_view.memory_indicator.cget("text") == ""
+    assert str(calc_view.mc_button.cget("state")) == "disabled"
+    assert str(calc_view.mr_button.cget("state")) == "disabled"
+
+
+def test_keyboard_input_does_not_leak_from_other_views_to_calculator(app_window):
+    """Regression: typing into a Financial/Convert entry field must not
+    silently drive the (invisible) Calculator view's state, since keyboard
+    shortcuts are bound at the toplevel and previously fired regardless of
+    which view was actually showing."""
+    app_window.show_view("Calculator")
+    calc_view = app_window.views["Calculator"]
+    calc_view.calc.clear_all()
+    calc_view._refresh()
+
+    app_window.show_view("Financial")
+    app_window.update()
+    entries = _find_entries(app_window.views["Financial"])
+    assert entries, "Financial view should have entry fields"
+    entry = entries[0]
+    entry.focus_set()
+    app_window.update()
+
+    app_window.event_generate("<Key-5>")
+    app_window.event_generate("<Key-7>")
+    app_window.update()
+
+    assert entry.get() == "57"
+    assert calc_view.calc.display == "0"
+
+    app_window.show_view("Calculator")
+
+
+def test_memory_restores_on_init_when_persist_memory_enabled(app_window, tmp_path):
+    """Regression: the 'Remember calculator memory between sessions' setting
+    previously did nothing - memory was never actually restored on startup.
+    Builds a second CalculatorView under the already-open window (instead of
+    a second Tk() root, which is flaky to create/destroy repeatedly in one
+    process) to exercise the same settings-driven init path a real restart
+    would take."""
+    from cinqic_calculator.history import History
+    from cinqic_calculator.settings import Settings
+    from cinqic_calculator.ui.calculator_view import CalculatorView
+
+    settings = Settings(str(tmp_path / "settings.json"))
+    settings.set("persist_memory", True)
+    settings.set("memory_value", 42.0)
+    settings.save()
+    history = History(str(tmp_path / "history.json"))
+
+    view = CalculatorView(app_window, app_window.colors, history, settings)
+    app_window.update()
+    try:
+        assert view.calc.memory == 42.0
+        assert view.memory_indicator.cget("text") == "M"
+        assert str(view.mc_button.cget("state")) == "normal"
+    finally:
+        view.destroy()
+
+
+def test_persist_memory_toggle_off_clears_stored_value(app_window):
+    """Regression: settings.json didn't have a memory_value key in
+    DEFAULT_SETTINGS, so Settings.load() silently dropped it on reload
+    regardless of the persist_memory checkbox's state."""
+    settings_view = app_window.views["Settings"]
+    settings_view.settings.set("memory_value", 99.0)
+    settings_view.persist_memory_var.set(False)
+    settings_view._on_persist_memory_toggle()
+    assert settings_view.settings.get("memory_value") is None

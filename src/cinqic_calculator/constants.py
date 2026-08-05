@@ -3,7 +3,7 @@
 import os
 
 APP_NAME = "Cinqic Calculator"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 APP_ID = "com.cinqic.calculator"
 
 MAX_HISTORY_ENTRIES = 200

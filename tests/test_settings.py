@@ -54,3 +54,21 @@ def test_window_position_allows_none(tmp_path):
     settings.save()
     reloaded = Settings(path)
     assert reloaded.get("window_x") == 100
+
+
+def test_memory_value_defaults_to_none(tmp_path):
+    path = os.path.join(tmp_path, "settings.json")
+    settings = Settings(path)
+    assert settings.get("memory_value") is None
+
+
+def test_memory_value_round_trips(tmp_path):
+    """Regression: memory_value must be in DEFAULT_SETTINGS, or load()
+    silently drops it on reload since it only keeps known default keys."""
+    path = os.path.join(tmp_path, "settings.json")
+    settings = Settings(path)
+    settings.set("memory_value", 42.0)
+    settings.save()
+
+    reloaded = Settings(path)
+    assert reloaded.get("memory_value") == 42.0

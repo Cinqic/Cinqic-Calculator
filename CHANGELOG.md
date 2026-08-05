@@ -2,6 +2,30 @@
 
 All notable changes to Cinqic Calculator are documented in this file.
 
+## 1.0.1
+
+### Fixed
+
+- `MC` and `MR` are now disabled whenever memory is empty, instead of
+  always appearing clickable regardless of state.
+- Keyboard shortcuts (digits, operators, Enter, Escape, Backspace) no
+  longer leak into the calculator's hidden state while another view
+  (Convert, Financial, History, Settings, About) is active. Previously,
+  typing into an entry field on another view also silently drove the
+  invisible calculator's state, which could later surface as unexpected
+  values or memory behavior when returning to the Calculator view.
+- The "Remember calculator memory between sessions" setting now actually
+  works: memory is restored on startup when enabled, saved whenever it
+  changes, and cleared from disk immediately when the setting is turned
+  off. Previously the checkbox had no effect at all, and even a direct
+  write to this setting would have been silently dropped on reload.
+
+### Improved
+
+- The memory indicator and `MC`/`MR` state are now initialized correctly
+  as soon as the calculator view is built, rather than only updating
+  after the first button press.
+
 ## 1.0.0
 
 Initial release.
