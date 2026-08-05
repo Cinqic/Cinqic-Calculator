@@ -1,0 +1,91 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install -r requirements-build.txt
+
+      - name: Run the complete test suite
+        run: python -m pytest tests/ -v
+
+      - name: Build application with PyInstaller
+        run: |
+          pyinstaller --name "CinqicCalculator" --windowed --onedir --noconfirm `
+            --icon assets\icons\cinqic-calculator.ico `
+            --paths src `
+            src\cinqic_calculator\__main__.py
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: |
+          New-Item -ItemType Directory -Force -Path installer\Output | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\cinqic-calculator.iss
+
+      - name: Build portable ZIP
+        run: |
+          Compress-Archive -Path "dist\CinqicCalculator\*" -DestinationPath "installer\Output\Cinqic-Calculator-Windows-x64-Portable.zip"
+
+      - name: Generate SHA-256 checksums
+        run: |
+          python scripts\calculate_checksum.py `
+            installer\Output\SHA256SUMS.txt `
+            installer\Output\Cinqic-Calculator-Windows-x64-Setup.exe `
+            installer\Output\Cinqic-Calculator-Windows-x64-Portable.zip
+
+      - name: Verify release artifacts
+        run: python scripts\verify_release.py installer\Output
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/Output/Cinqic-Calculator-Windows-x64-Setup.exe
+            installer/Output/Cinqic-Calculator-Windows-x64-Portable.zip
+            installer/Output/SHA256SUMS.txt
+          body: |
+            ## Cinqic Calculator ${{ github.ref_name }}
+
+            A lightweight, private desktop calculator for Windows.
+
+            **Supported:** Windows 10/11, 64-bit.
+
+            ### Install
+            Download `Cinqic-Calculator-Windows-x64-Setup.exe` and run it (no
+            administrator privileges required). A portable ZIP is also
+            available if you'd rather not install anything.
+
+            ### Privacy
+            Works fully offline. No account, telemetry, or ads. See
+            [PRIVACY.md](https://github.com/${{ github.repository }}/blob/main/PRIVACY.md).
+
+            ### Known limitations
+            This build is not code-signed. Windows SmartScreen may show an
+            unfamiliar-app warning on first run - this is expected for an
+            unsigned open-source build.
+
+            Juniper is not integrated into this release; the calculator works
+            fully without AI.
+
+            ### Verify your download
+            Checksums are in `SHA256SUMS.txt` in this release.
+
+            Source: https://github.com/${{ github.repository }}

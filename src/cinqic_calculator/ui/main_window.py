@@ -14,7 +14,7 @@ from .settings_view import SettingsView
 
 _NAV_ITEMS = ["Calculator", "Convert", "Financial", "History", "Settings", "About"]
 _MIN_WIDTH = 640
-_MIN_HEIGHT = 480
+_MIN_HEIGHT = 640
 
 
 class MainWindow(tk.Tk):
@@ -109,7 +109,12 @@ class MainWindow(tk.Tk):
                 self.content_frame, c, self.history, on_status=self.set_status, on_reuse=self._reuse_in_calculator
             ),
             "Settings": SettingsView(
-                self.content_frame, c, self.settings, self.history, on_status=self.set_status, on_theme_change=self.apply_theme
+                self.content_frame,
+                c,
+                self.settings,
+                self.history,
+                on_status=self.set_status,
+                on_theme_change=self.apply_theme,
             ),
             "About": AboutView(self.content_frame, c),
         }
@@ -136,7 +141,6 @@ class MainWindow(tk.Tk):
         self.show_view("History")
 
     def _copy_shortcut(self):
-        current = self.focus_get()
         calculator_view = self.views["Calculator"]
         if calculator_view.winfo_ismapped():
             calculator_view.copy_result()

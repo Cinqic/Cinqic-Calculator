@@ -64,9 +64,10 @@ class SettingsView(tk.Frame):
             highlightthickness=0,
         ).pack(anchor="w", padx=16, pady=(0, 12))
 
-        make_button(self, "Clear all history now", self._clear_history, c, kind="function", width=18, height=1, font_size=10).pack(
-            anchor="w", padx=16, pady=(0, 16)
+        clear_button = make_button(
+            self, "Clear all history now", self._clear_history, c, kind="function", width=18, height=1, font_size=10
         )
+        clear_button.pack(anchor="w", padx=16, pady=(0, 16))
 
         tk.Label(
             self,

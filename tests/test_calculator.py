@@ -1,4 +1,3 @@
-import pytest
 
 from cinqic_calculator.calculator import Calculator
 

@@ -12,7 +12,7 @@ DEFAULT_SETTINGS = {
     "degree_mode": True,
     "persist_memory": False,
     "window_width": 900,
-    "window_height": 600,
+    "window_height": 720,
     "window_x": None,
     "window_y": None,
 }

@@ -6,7 +6,8 @@ build/
 dist/
 .venv/
 venv/
-*.spec.bak
+*.spec
+.build-venv/
 installer/Output/
 scripts/checksums/
 .coverage

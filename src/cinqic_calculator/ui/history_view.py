@@ -50,7 +50,8 @@ class HistoryView(tk.Frame):
     def refresh(self):
         self.tree.delete(*self.tree.get_children())
         for index, entry in enumerate(self.history.entries):
-            self.tree.insert("", "end", iid=str(index), values=(entry["expression"], entry["result"], entry["timestamp"]))
+            values = (entry["expression"], entry["result"], entry["timestamp"])
+            self.tree.insert("", "end", iid=str(index), values=values)
 
     def _selected_index(self):
         selection = self.tree.selection()
