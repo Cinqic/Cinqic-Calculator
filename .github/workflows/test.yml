@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements-build.txt
 
       - name: Lint
-        run: ruff check src tests
+        run: ruff check src tests android
 
       - name: Run tests
         run: python -m pytest tests/ -v

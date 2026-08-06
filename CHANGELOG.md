@@ -1,6 +1,24 @@
 # Changelog
 
 All notable changes to Cinqic Calculator are documented in this file.
+Windows and Android are versioned and released independently (Windows tags:
+`vX.Y.Z`; Android tags: `android-vX.Y.Z`).
+
+## Android 1.0.0
+
+### Added
+
+- A separate, independent Android frontend built with Kivy, reusing the
+  same tested calculator, evaluator, financial, conversion, history,
+  settings, and storage logic as the Windows app unchanged.
+- Standard and scientific calculator, memory (MC/MR/M+/M-/MS) with the
+  same enabled/disabled and cross-view isolation behavior as the desktop
+  v1.0.1 fixes, unit conversions, financial tools, local history, settings,
+  and About/privacy screens.
+- Fully offline. No internet permission, no unnecessary permissions.
+- Package `com.cinqic.calculator`, distributed as a direct signed APK
+  download with a published SHA-256 checksum and signing certificate
+  fingerprint — not through the Google Play Store.
 
 ## 1.0.1
 

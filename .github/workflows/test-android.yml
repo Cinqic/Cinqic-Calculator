@@ -1,0 +1,94 @@
+name: Test Android
+
+# Builds an UNSIGNED DEBUG APK only, for CI-based verification of the
+# Kivy/Buildozer packaging itself (installability, package ID, permissions,
+# launchability). No keystore, no secrets, nothing published. The signed
+# release build lives in release-android.yml and only runs on an
+# android-v* tag.
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "src/cinqic_calculator/**"
+      - "tests/test_android_glue.py"
+      - ".github/workflows/test-android.yml"
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "src/cinqic_calculator/**"
+  workflow_dispatch:
+
+jobs:
+  android-glue-tests:
+    # The pure-Python android/logic.py glue and its tests need no Kivy or
+    # Android tooling at all -- run them on the same platform/version as
+    # the main desktop test job for a fast, cheap signal before the much
+    # slower buildozer build below.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install -r requirements-build.txt
+
+      - name: Lint
+        run: ruff check src tests android
+
+      - name: Run full suite (desktop + android glue)
+        run: python -m pytest tests/ -v
+
+  build-debug-apk:
+    needs: android-glue-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Bundle the shared core into the Android source tree
+        # buildozer.spec's source.dir is android/, and buildozer only
+        # packages files under source.dir. cinqic_calculator has zero
+        # third-party dependencies, so a plain copy is sufficient.
+        run: cp -r src/cinqic_calculator android/cinqic_calculator
+
+      - name: Build debug APK with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          workdir: android
+          buildozer_version: stable
+          command: buildozer -v android debug
+
+      - name: Locate built APK
+        id: apk
+        run: |
+          apk_path=$(find android/bin -maxdepth 1 -name "*-debug.apk" | head -n1)
+          if [ -z "$apk_path" ]; then
+            echo "No debug APK found under android/bin" >&2
+            exit 1
+          fi
+          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect package identity and permissions
+        run: python3 scripts/inspect_android_apk.py "${{ steps.apk.outputs.path }}"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinqic-calculator-debug-apk
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 14

@@ -1,0 +1,13 @@
+# Pinned build-time tooling for building the Android debug APK in CI
+# (GitHub Actions ubuntu-latest). These are the tools that run buildozer /
+# python-for-android on the CI runner itself - NOT the app's own runtime
+# requirements (those are declared separately in buildozer.spec's
+# `requirements = python3,kivy`).
+#
+# Install with: pip install -r android/requirements-android.txt
+#
+# This cannot be installed or exercised on Windows (no WSL/Docker/Android
+# SDK on this dev machine) - see android/README.md.
+
+buildozer==1.5.0
+cython==0.29.36

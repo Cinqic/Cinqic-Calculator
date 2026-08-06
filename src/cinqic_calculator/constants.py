@@ -9,8 +9,16 @@ APP_ID = "com.cinqic.calculator"
 MAX_HISTORY_ENTRIES = 200
 
 
-def data_dir() -> str:
-    """Return the per-user application data directory, creating it if needed."""
+def data_dir(override_base: str | None = None) -> str:
+    """Return the per-user application data directory, creating it if needed.
+
+    ``override_base`` lets a platform frontend supply its own private storage
+    root (e.g. Android's ``App.user_data_dir``) instead of the Windows
+    ``LOCALAPPDATA``/home fallback used by the desktop app.
+    """
+    if override_base is not None:
+        os.makedirs(override_base, exist_ok=True)
+        return override_base
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
     path = os.path.join(base, "Cinqic", "Calculator")
     os.makedirs(path, exist_ok=True)
