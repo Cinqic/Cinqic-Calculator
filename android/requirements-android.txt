@@ -25,6 +25,9 @@
 # skew or caching. Revisit once p4a ships a 3.14 build with working pip.
 buildozer==1.5.0
 
-# Cython is deliberately NOT pinned here: buildozer declares its own
-# constraint (cython<3.0) and pinning a different range just produces an
-# unresolvable conflict. Let buildozer choose.
+# Cython must be pinned explicitly: buildozer 1.5.0 does not declare it as
+# a dependency (1.6.0 does), it just looks for a `cython` executable on
+# PATH and aborts with "Cython (cython) not found" if absent. 0.29.x is
+# the series p4a v2024.01.21's recipes are written against; Cython 3.x
+# changes default language semantics and is not compatible with them.
+cython==0.29.36
