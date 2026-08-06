@@ -79,12 +79,19 @@ jobs:
         run: pip install -r android/requirements-android.txt
 
       - name: Cache Buildozer's Android SDK/NDK downloads
+        # Deliberately narrow: only the downloaded SDK/NDK/build-tools
+        # (large, slow to fetch, never change between runs). NOT the
+        # build-*/  directories (compiled recipes, target venvs) -- a
+        # partially-built venv or recipe from a prior *failed* run being
+        # restored here previously corrupted a later run's pip install.
+        # Those directories are cheap to rebuild fresh every time.
         uses: actions/cache@v4
         with:
           path: |
-            ~/.buildozer
-            android/.buildozer
-          key: buildozer-android-${{ hashFiles('android/buildozer.spec') }}
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-*
+            ~/.buildozer/android/platform/apache-ant-*
+          key: buildozer-android-sdk-v2-${{ hashFiles('android/buildozer.spec') }}
 
       - name: Bundle the shared core into the Android source tree
         # buildozer.spec's source.dir is android/, and buildozer only
