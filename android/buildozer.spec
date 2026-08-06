@@ -92,6 +92,14 @@ android.minapi = 21
 # (list) The Android archs to build for
 android.archs = arm64-v8a, armeabi-v7a
 
+# (str) python-for-android version to use. Buildozer clones p4a itself
+# rather than using a pip-installed copy, and defaults to tracking p4a's
+# master branch - which pairs whatever buildozer version is installed with
+# a bleeding-edge toolchain. Pinned to the release that shipped alongside
+# buildozer 1.6.0 (see android/requirements-android.txt); keep the two in
+# sync when upgrading either.
+p4a.branch = v2026.05.09
+
 [buildozer]
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug)

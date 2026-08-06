@@ -1,4 +1,4 @@
-# Pinned build-time tooling for building the Android debug APK in CI
+# Pinned build-time tooling for building the Android APK in CI
 # (GitHub Actions ubuntu-latest). These are the tools that run buildozer /
 # python-for-android on the CI runner itself - NOT the app's own runtime
 # requirements (those are declared separately in buildozer.spec's
@@ -8,6 +8,15 @@
 #
 # This cannot be installed or exercised on Windows (no WSL/Docker/Android
 # SDK on this dev machine) - see android/README.md.
+#
+# IMPORTANT - keep this in sync with buildozer.spec's `p4a.branch`.
+# Buildozer and python-for-android are separate projects that must match:
+# buildozer clones p4a itself, so an old buildozer paired with p4a master
+# silently mixes a years-old driver with a bleeding-edge toolchain. 1.6.0
+# and p4a v2026.05.09 were released together (2026-05-12 / 2026-05-09) and
+# are the combination pinned here.
+buildozer==1.6.0
 
-buildozer==1.5.0
-cython==0.29.36
+# Cython 3.x is required to build CPython 3.14 extension modules, which is
+# the interpreter version p4a v2026.05.09's python3 recipe targets.
+cython>=3.0,<4.0
