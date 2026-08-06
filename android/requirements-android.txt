@@ -17,6 +17,6 @@
 # are the combination pinned here.
 buildozer==1.6.0
 
-# Cython 3.x is required to build CPython 3.14 extension modules, which is
-# the interpreter version p4a v2026.05.09's python3 recipe targets.
-cython>=3.0,<4.0
+# Cython is deliberately NOT pinned here: buildozer declares its own
+# constraint (1.6.0 requires cython<3.0) and pinning a different range
+# just produces an unresolvable conflict. Let buildozer choose.
