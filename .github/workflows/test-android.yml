@@ -59,6 +59,33 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Buildozer's native build dependencies
+        # Installed directly, not via a third-party Docker action -- avoids
+        # depending on an external image/PPA staying compatible with
+        # whatever Ubuntu release the runner image ships next.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git zip unzip autoconf libtool pkg-config \
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Install Buildozer and Cython
+        run: pip install -r android/requirements-android.txt
+
+      - name: Cache Buildozer's Android SDK/NDK downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            android/.buildozer
+          key: buildozer-android-${{ hashFiles('android/buildozer.spec') }}
+
       - name: Bundle the shared core into the Android source tree
         # buildozer.spec's source.dir is android/, and buildozer only
         # packages files under source.dir. cinqic_calculator has zero
@@ -66,12 +93,10 @@ jobs:
         run: cp -r src/cinqic_calculator android/cinqic_calculator
 
       - name: Build debug APK with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          workdir: android
-          buildozer_version: stable
-          command: buildozer -v android debug
+        # First run downloads the Android SDK/NDK, so this can take a
+        # while. Buildozer caches under ~/.buildozer between runs.
+        working-directory: android
+        run: yes | buildozer -v android debug
 
       - name: Locate built APK
         id: apk

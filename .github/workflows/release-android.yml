@@ -46,16 +46,36 @@ jobs:
       - name: Lint
         run: ruff check src tests android
 
+      - name: Install Buildozer's native build dependencies
+        # Installed directly, not via a third-party Docker action -- avoids
+        # depending on an external image/PPA staying compatible with
+        # whatever Ubuntu release the runner image ships next.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git zip unzip autoconf libtool pkg-config \
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Install Buildozer and Cython
+        run: pip install -r android/requirements-android.txt
+
+      - name: Cache Buildozer's Android SDK/NDK downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            android/.buildozer
+          key: buildozer-android-${{ hashFiles('android/buildozer.spec') }}
+
       - name: Bundle the shared core into the Android source tree
         run: cp -r src/cinqic_calculator android/cinqic_calculator
 
       - name: Build release APK with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          workdir: android
-          buildozer_version: stable
-          command: buildozer -v android release
+        # First run downloads the Android SDK/NDK, so this can take a
+        # while. Buildozer caches under ~/.buildozer between runs.
+        working-directory: android
+        run: yes | buildozer -v android release
 
       - name: Locate unsigned release APK
         id: unsigned_apk
@@ -80,9 +100,12 @@ jobs:
       - name: Find Android build-tools
         id: build_tools
         run: |
-          bt_dir=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n1)
+          # Buildozer downloads its own SDK under ~/.buildozer (not a
+          # system $ANDROID_HOME) when installed natively via pip, so
+          # search there directly rather than assuming that env var.
+          bt_dir=$(find "$HOME/.buildozer" -maxdepth 6 -type d -path "*build-tools/*" | sort -V | tail -n1)
           if [ -z "$bt_dir" ]; then
-            echo "No Android build-tools directory found under \$ANDROID_HOME" >&2
+            echo "No Android build-tools directory found under ~/.buildozer" >&2
             exit 1
           fi
           echo "dir=$bt_dir" >> "$GITHUB_OUTPUT"
