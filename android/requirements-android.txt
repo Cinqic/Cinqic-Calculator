@@ -11,12 +11,20 @@
 #
 # IMPORTANT - keep this in sync with buildozer.spec's `p4a.branch`.
 # Buildozer and python-for-android are separate projects that must match:
-# buildozer clones p4a itself, so an old buildozer paired with p4a master
-# silently mixes a years-old driver with a bleeding-edge toolchain. 1.6.0
-# and p4a v2026.05.09 were released together (2026-05-12 / 2026-05-09) and
-# are the combination pinned here.
-buildozer==1.6.0
+# buildozer clones p4a itself, so leaving p4a unpinned tracks its master
+# branch and silently pairs this buildozer with a bleeding-edge toolchain.
+#
+# Pinned to buildozer 1.5.0 + p4a v2024.01.21, whose python3 recipe builds
+# CPython 3.11.5. Both newer p4a releases (v2026.05.09 and master) build
+# CPython 3.14.2, whose venv ships an internally inconsistent pip - its
+# build_env/ package is from pip 26.x while exceptions.py is older, so
+# every p4a "install pure-python dependencies" step dies with
+# "ImportError: cannot import name 'BuildDependencyInstallError'".
+# That reproduced on a clean cache with both an old and a matched-pair
+# buildozer, so it is a property of the 3.14 toolchain, not of version
+# skew or caching. Revisit once p4a ships a 3.14 build with working pip.
+buildozer==1.5.0
 
 # Cython is deliberately NOT pinned here: buildozer declares its own
-# constraint (1.6.0 requires cython<3.0) and pinning a different range
-# just produces an unresolvable conflict. Let buildozer choose.
+# constraint (cython<3.0) and pinning a different range just produces an
+# unresolvable conflict. Let buildozer choose.
