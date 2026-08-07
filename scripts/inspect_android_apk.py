@@ -66,7 +66,11 @@ def parse_badging(output: str) -> dict:
         info["version_code"] = package_match.group(2)
         info["version_name"] = package_match.group(3)
 
-    min_sdk_match = re.search(r"sdkVersion:'(\d+)'", output)
+    # aapt2's badging output labels this field "minSdkVersion:'21'";
+    # classic aapt uses the bare (confusingly-named) "sdkVersion:'21'".
+    # Match whichever is present, but not "targetSdkVersion:'34'" -- a
+    # plain "sdkVersion:'" search would false-match inside that string too.
+    min_sdk_match = re.search(r"(?<!target)(?:min)?[Ss]dkVersion:'(\d+)'", output)
     if min_sdk_match:
         info["min_sdk"] = int(min_sdk_match.group(1))
 
