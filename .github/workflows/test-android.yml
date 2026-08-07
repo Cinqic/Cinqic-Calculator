@@ -226,6 +226,62 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Write the ADB verification script
+        # reactivecircus/android-emulator-runner's `script:` field executes
+        # each line as a SEPARATE `sh -c` invocation (confirmed from a real
+        # CI run's log: one "[command]/usr/bin/sh -c <line>" per line) --
+        # shell variables, `set -e`, and multi-line if/then/fi do not
+        # survive across lines there. Writing the real logic to a file via
+        # a normal `run:` step (a single, ordinary shell session, no such
+        # quirk) and having the emulator-runner step just invoke that one
+        # file sidesteps the whole problem.
+        run: |
+          cat > "$RUNNER_TEMP/emulator-verify.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          APK="$1"
+
+          echo "--- adb install ---"
+          adb install -r "$APK"
+
+          echo "--- package appears in pm list ---"
+          adb shell pm list packages | grep com.cinqic.calculator
+
+          echo "--- launch main activity ---"
+          adb logcat -c
+          adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
+          sleep 15
+
+          echo "--- confirm the app process is actually running (no immediate crash) ---"
+          adb shell pidof com.cinqic.calculator
+
+          echo "--- logcat: fail if this process logged a FATAL EXCEPTION / AndroidRuntime crash ---"
+          adb logcat -d | tee /tmp/logcat.txt
+          if grep -q "FATAL EXCEPTION" /tmp/logcat.txt || (grep -A5 "AndroidRuntime" /tmp/logcat.txt | grep -q "com.cinqic.calculator"); then
+            echo "Crash detected in logcat" >&2
+            exit 1
+          fi
+
+          echo "--- force-stop and relaunch, to confirm the app restarts cleanly ---"
+          adb shell am force-stop com.cinqic.calculator
+          sleep 2
+          adb logcat -c
+          adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
+          sleep 15
+          adb shell pidof com.cinqic.calculator
+          adb logcat -d | tee /tmp/logcat-restart.txt
+          if grep -q "FATAL EXCEPTION" /tmp/logcat-restart.txt; then
+            echo "Crash detected on restart" >&2
+            exit 1
+          fi
+
+          echo "--- uninstall cleanly ---"
+          adb uninstall com.cinqic.calculator
+
+          echo "All emulator checks passed."
+          SCRIPT
+          chmod +x "$RUNNER_TEMP/emulator-verify.sh"
+
       - name: Install, launch, and verify on an emulator via ADB
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -234,45 +290,4 @@ jobs:
           target: default
           profile: pixel_5
           disable-animations: true
-          script: |
-            set -e
-            APK="${{ steps.apk.outputs.path }}"
-
-            echo "--- adb install ---"
-            adb install -r "$APK"
-
-            echo "--- package appears in pm list ---"
-            adb shell pm list packages | grep com.cinqic.calculator
-
-            echo "--- launch main activity ---"
-            adb logcat -c
-            adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
-            sleep 15
-
-            echo "--- confirm the app process is actually running (no immediate crash) ---"
-            adb shell pidof com.cinqic.calculator
-
-            echo "--- logcat: fail if this process logged a FATAL EXCEPTION / AndroidRuntime crash ---"
-            adb logcat -d | tee /tmp/logcat.txt
-            if grep -q "FATAL EXCEPTION" /tmp/logcat.txt || grep -A5 "AndroidRuntime" /tmp/logcat.txt | grep -q "com.cinqic.calculator"; then
-              echo "Crash detected in logcat" >&2
-              exit 1
-            fi
-
-            echo "--- force-stop and relaunch, to confirm the app restarts cleanly ---"
-            adb shell am force-stop com.cinqic.calculator
-            sleep 2
-            adb logcat -c
-            adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
-            sleep 15
-            adb shell pidof com.cinqic.calculator
-            adb logcat -d | tee /tmp/logcat-restart.txt
-            if grep -q "FATAL EXCEPTION" /tmp/logcat-restart.txt; then
-              echo "Crash detected on restart" >&2
-              exit 1
-            fi
-
-            echo "--- uninstall cleanly ---"
-            adb uninstall com.cinqic.calculator
-
-            echo "All emulator checks passed."
+          script: "\"$RUNNER_TEMP/emulator-verify.sh\" \"${{ steps.apk.outputs.path }}\""
