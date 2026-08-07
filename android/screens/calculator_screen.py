@@ -11,6 +11,7 @@ desktop bug this specifically guards against.
 from __future__ import annotations
 
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import BooleanProperty, ListProperty, StringProperty
 from kivy.uix.screenmanager import Screen
@@ -72,6 +73,10 @@ class CalculatorScreen(Screen):
         self.degree_mode = self.calc.degree_mode
         restore_persisted_memory(self.calc, app.settings)
         self._refresh()
+        # Re-entering this screen (including after an app restart, where
+        # scientific_visible defaults back to False) must never leave a
+        # layout pass from a previous visit stale.
+        self._schedule_relayout()
 
     def on_enter(self, *_args):
         Window.bind(on_key_down=self._on_key_down)
@@ -158,6 +163,29 @@ class CalculatorScreen(Screen):
 
     def toggle_scientific(self):
         self.scientific_visible = not self.scientific_visible
+        self._schedule_relayout()
+
+    def _schedule_relayout(self):
+        # Bug fix: collapsing the Scientific panel left the display and
+        # memory row visually offset above the screen until the user
+        # manually interacted with something. content_layout's children
+        # size_hint_y bindings (see calculator.kv) update immediately, but
+        # Kivy's own layout recompute for a BoxLayout is itself deferred to
+        # the next Clock tick (via Layout._trigger_layout) -- on a real
+        # device this could be observed a frame late, or not settle into a
+        # consistent state across the opacity/disabled/size_hint changes
+        # firing together. Explicitly forcing do_layout() one frame later,
+        # after kv's own bindings have already fired, guarantees the
+        # rendered result matches scientific_visible's current value rather
+        # than depending on however Kivy happened to batch that frame's
+        # updates. See financial_screen.py's _reset_scroll() for the
+        # equivalent fix on a screen that uses an actual ScrollView.
+        Clock.schedule_once(self._force_relayout, 0)
+
+    def _force_relayout(self, _dt):
+        content_layout = self.ids.get("content_layout")
+        if content_layout is not None:
+            content_layout.do_layout()
 
     def toggle_degree_mode(self):
         app = App.get_running_app()

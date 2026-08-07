@@ -6,6 +6,7 @@ plain percentage/number).
 
 from __future__ import annotations
 
+from kivy.clock import Clock
 from kivy.properties import ListProperty, StringProperty
 from kivy.uix.screenmanager import Screen
 
@@ -140,6 +141,27 @@ class FinancialScreen(Screen):
                 widget.text = ""
         self.field_labels = labels
         self.field_visible = visible
+        # Bug fix: switching to an operation with fewer visible fields
+        # while scrolled down left the ScrollView's content clipped above
+        # the viewport instead of snapping back to show the (now shorter)
+        # form from the top. field_visible's kv bindings (see
+        # financial.kv) update field heights immediately, but the
+        # ScrollView's own scroll_y is a fraction of total content height
+        # and does not automatically renormalize when that height shrinks
+        # until Kivy's own layout pass has actually recomputed
+        # minimum_height -- one frame later. Scheduling the reset via
+        # Clock.schedule_once(..., 0), rather than setting scroll_y
+        # immediately here, is what makes it apply after that recompute
+        # instead of before it (setting it here would just get overwritten
+        # by the pending layout pass). See calculator_screen.py's
+        # _schedule_relayout()/_force_relayout() for the equivalent fix on
+        # a screen that has no ScrollView.
+        Clock.schedule_once(self._reset_scroll, 0)
+
+    def _reset_scroll(self, _dt):
+        scroll_view = self.ids.get("scroll_view")
+        if scroll_view is not None:
+            scroll_view.scroll_y = 1
 
     def calculate(self):
         op_name = self.ids.operation_spinner.text

@@ -7,6 +7,7 @@ beyond what it needs to render the current list.
 from __future__ import annotations
 
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.properties import ListProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -32,10 +33,23 @@ class HistoryScreen(Screen):
         container.clear_widgets()
         if not self.rows_data:
             container.add_widget(Label(text="No history yet.", size_hint_y=None, height="40dp"))
-            return
-        # Show most recent first.
-        for index, entry in reversed(self.rows_data):
-            container.add_widget(self._build_row(index, entry))
+        else:
+            # Show most recent first.
+            for index, entry in reversed(self.rows_data):
+                container.add_widget(self._build_row(index, entry))
+        # Bug fix (same class as calculator_screen.py's Scientific panel
+        # and financial_screen.py's dynamic fields): after delete_entry()
+        # or clear_all() shrinks rows_container's minimum_height, the
+        # ScrollView's scroll_y is a fraction of the OLD, taller content
+        # and can leave the list looking blank/offset if the user had
+        # scrolled down. Reset it to the top once Kivy's layout pass has
+        # recomputed minimum_height for the new (possibly empty) content.
+        Clock.schedule_once(self._reset_scroll, 0)
+
+    def _reset_scroll(self, _dt):
+        scroll_view = self.ids.get("scroll_view")
+        if scroll_view is not None:
+            scroll_view.scroll_y = 1
 
     def _build_row(self, index: int, entry: dict) -> BoxLayout:
         row = BoxLayout(size_hint_y=None, height="56dp", spacing="6dp")
