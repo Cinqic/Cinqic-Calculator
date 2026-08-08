@@ -110,9 +110,21 @@ jobs:
           # Buildozer downloads its own SDK under ~/.buildozer (not a
           # system $ANDROID_HOME) when installed natively via pip, so
           # search there directly rather than assuming that env var.
-          bt_dir=$(find "$HOME/.buildozer" -maxdepth 6 -type d -path "*build-tools/*" | sort -V | tail -n1)
-          if [ -z "$bt_dir" ]; then
-            echo "No Android build-tools directory found under ~/.buildozer" >&2
+          #
+          # Two steps deliberately: `find ... -path "*build-tools/*"`
+          # (what this used to be) matches ANY nested directory under
+          # build-tools/, not just its direct version subdirectories -
+          # it actually matched build-tools/37.0.0/renderscript/ (sorts
+          # after "37.0.0" alphabetically) instead of build-tools/37.0.0/
+          # itself, and zipalign doesn't exist in that renderscript dir.
+          build_tools_root=$(find "$HOME/.buildozer" -maxdepth 6 -type d -name "build-tools" | head -n1)
+          if [ -z "$build_tools_root" ]; then
+            echo "No build-tools directory found under ~/.buildozer" >&2
+            exit 1
+          fi
+          bt_dir=$(find "$build_tools_root" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
+          if [ -z "$bt_dir" ] || [ ! -x "$bt_dir/zipalign" ]; then
+            echo "No usable build-tools version (with zipalign) found under $build_tools_root" >&2
             exit 1
           fi
           echo "dir=$bt_dir" >> "$GITHUB_OUTPUT"
