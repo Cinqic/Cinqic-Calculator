@@ -92,6 +92,13 @@ android.minapi = 21
 # (list) The Android archs to build for
 android.archs = arm64-v8a, armeabi-v7a
 
+# (str) Format for `buildozer android release`: apk or aab. Defaults to
+# aab (Play Store bundle format) if unset. This app is distributed as a
+# direct APK download, not through the Play Store, so it must be apk -
+# release-android.yml's zipalign/apksigner/checksum steps all expect a
+# single installable .apk file, not a bundle.
+android.release_artifact = apk
+
 # (str) python-for-android version to use. Buildozer clones p4a itself
 # rather than using a pip-installed copy, and defaults to tracking p4a's
 # master branch - which pairs whatever buildozer version is installed with
