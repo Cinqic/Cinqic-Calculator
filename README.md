@@ -41,7 +41,9 @@ it's already here. See [About Juniper](#juniper-relationship) below.
 ## Installation
 
 1. Download `Cinqic-Calculator-Windows-x64-Setup.exe` from the
-   [latest release](https://github.com/Cinqic/Cinqic-Calculator/releases/latest).
+   [v1.0.1 release](https://github.com/Cinqic/Cinqic-Calculator/releases/tag/v1.0.1)
+   (pinned rather than "latest" so this link isn't affected by future
+   Android releases).
 2. Run the installer and follow the prompts. Administrator privileges are
    not required after installation.
 3. Launch **Cinqic Calculator** from the Start menu.
