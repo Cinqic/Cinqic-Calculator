@@ -1,6 +1,8 @@
 # Cinqic Calculator
 
-A lightweight, private desktop calculator for Windows.
+A lightweight, private calculator for Windows and Android.
+
+![Cinqic Calculator](assets/branding/cinqic-calculator-horizontal.png)
 
 ![Cinqic Calculator screenshot](assets/screenshots/calculator.png)
 
@@ -39,7 +41,9 @@ it's already here. See [About Juniper](#juniper-relationship) below.
 ## Installation
 
 1. Download `Cinqic-Calculator-Windows-x64-Setup.exe` from the
-   [latest release](https://github.com/Cinqic/Cinqic-Calculator/releases/latest).
+   [v1.0.1 release](https://github.com/Cinqic/Cinqic-Calculator/releases/tag/v1.0.1)
+   (pinned rather than "latest" so this link isn't affected by future
+   Android releases).
 2. Run the installer and follow the prompts. Administrator privileges are
    not required after installation.
 3. Launch **Cinqic Calculator** from the Start menu.
@@ -55,6 +59,24 @@ choosing to continue.
 
 Verify your download against `SHA256SUMS.txt` from the same release if
 you'd like to confirm file integrity.
+
+## Android
+
+A separate, independent Android frontend built with
+[Kivy](https://kivy.org) reuses the same tested calculation, conversion,
+financial, history, settings, and storage logic as the Windows app — see
+[`android/README.md`](android/README.md) for the app's layout and how to
+build it (Linux/CI only; it cannot be built on Windows).
+
+- Package: `com.cinqic.calculator` · Version 1.0.0 · versionCode 1
+- Fully offline, no internet permission, no unnecessary permissions —
+  see [`android/buildozer.spec`](android/buildozer.spec).
+- Data (settings, optional history) lives in the app's private Android
+  storage, never in shared/external storage and never transmitted anywhere.
+- Distributed as a direct, signed APK download (SHA-256 checksum and
+  signing certificate fingerprint published with each release) — not
+  through the Google Play Store.
+- Juniper is not integrated into the Android app either.
 
 ## Development setup
 
@@ -112,6 +134,15 @@ Tagging a commit `vX.Y.Z` on `main` triggers
 the test suite, builds the installer and portable ZIP, generates checksums,
 and publishes a GitHub Release with those assets attached. Releases are
 only published when tests and packaging succeed.
+
+Tagging a commit `android-vX.Y.Z` triggers
+[`release-android.yml`](.github/workflows/release-android.yml): full test
+suite, release APK build, signing with the repository's release keystore,
+zip-align, signature verification, package/permission inspection, and
+checksum generation, publishing only if every step succeeds. Windows and
+Android releases are tagged and published independently so one platform's
+release can never affect the other's download links (see the pinned
+`v1.0.1` URLs on [cinqic.com/calculator](https://cinqic.com/calculator/)).
 
 ## License
 

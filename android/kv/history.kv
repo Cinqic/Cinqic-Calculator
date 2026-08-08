@@ -1,0 +1,34 @@
+#:kivy 2.2.0
+
+<HistoryScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: "16dp"
+        spacing: "8dp"
+
+        BoxLayout:
+            size_hint_y: None
+            height: "36dp"
+            Label:
+                text: "History"
+                font_size: "22sp"
+            Button:
+                text: "Clear All"
+                size_hint_x: 0.35
+                on_release: root.clear_all()
+
+        Label:
+            text: root.status_text
+            size_hint_y: None
+            height: "24dp" if root.status_text else 0
+            color: 0.9, 0.6, 0.2, 1
+            font_size: "12sp"
+
+        ScrollView:
+            id: scroll_view
+            BoxLayout:
+                id: rows_container
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: "4dp"

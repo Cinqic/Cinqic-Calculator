@@ -1,0 +1,57 @@
+#:kivy 2.2.0
+
+<ConvertScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: "16dp"
+        spacing: "12dp"
+
+        Label:
+            text: "Convert"
+            font_size: "22sp"
+            size_hint_y: 0.1
+
+        Label:
+            text: "Category"
+            size_hint_y: 0.06
+        Spinner:
+            id: category_spinner
+            text: ""
+            size_hint_y: 0.1
+            on_text: root.on_category_selected(self.text)
+
+        TextInput:
+            id: value_input
+            hint_text: "Value"
+            input_filter: "float"
+            multiline: False
+            size_hint_y: 0.12
+            on_text: root.convert()
+
+        BoxLayout:
+            size_hint_y: 0.1
+            spacing: "8dp"
+            Spinner:
+                id: from_spinner
+                text: ""
+                on_text: root.convert()
+            Button:
+                text: "Swap"
+                size_hint_x: 0.3
+                on_release: root.swap_units()
+            Spinner:
+                id: to_spinner
+                text: ""
+                on_text: root.convert()
+
+        Label:
+            text: "Result"
+            size_hint_y: 0.06
+
+        Label:
+            id: result_label
+            text: root.result_text
+            font_size: "28sp"
+            size_hint_y: 0.2
+
+        Widget:

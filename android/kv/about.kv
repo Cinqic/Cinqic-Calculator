@@ -1,0 +1,41 @@
+#:kivy 2.2.0
+
+<AboutScreen>:
+    ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            padding: "20dp"
+            spacing: "14dp"
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: root.app_name
+                font_size: "26sp"
+                size_hint_y: None
+                height: "40dp"
+
+            Label:
+                text: root.version_text
+                font_size: "14sp"
+                color: 0.7, 0.7, 0.7, 1
+                size_hint_y: None
+                height: "24dp"
+
+            Label:
+                text: root.privacy_text
+                font_size: "14sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.width, None
+                size_hint_y: None
+                height: self.texture_size[1]
+
+            Label:
+                text: root.juniper_text
+                font_size: "14sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.width, None
+                size_hint_y: None
+                height: self.texture_size[1]

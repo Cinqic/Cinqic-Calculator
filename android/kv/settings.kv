@@ -1,0 +1,52 @@
+#:kivy 2.2.0
+
+<SettingsScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: "16dp"
+        spacing: "16dp"
+
+        Label:
+            text: "Settings"
+            font_size: "22sp"
+            size_hint_y: None
+            height: "36dp"
+
+        Label:
+            text: "Theme"
+            size_hint_y: None
+            height: "24dp"
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            spacing: "8dp"
+            ToggleButton:
+                text: "Dark"
+                group: "theme"
+                state: "down" if root.theme == "dark" else "normal"
+                on_release: root.set_theme("dark")
+            ToggleButton:
+                text: "Light"
+                group: "theme"
+                state: "down" if root.theme == "light" else "normal"
+                on_release: root.set_theme("light")
+
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            Label:
+                text: "Save calculation history"
+            Switch:
+                active: root.save_history_enabled
+                on_active: root.toggle_save_history(self.active)
+
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            Label:
+                text: "Remember memory (M) between sessions"
+            Switch:
+                active: root.persist_memory_enabled
+                on_active: root.toggle_persist_memory(self.active)
+
+        Widget:

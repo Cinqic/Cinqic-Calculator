@@ -7,7 +7,14 @@ dist/
 .venv/
 venv/
 *.spec
+!android/buildozer.spec
 .build-venv/
 installer/Output/
 scripts/checksums/
 .coverage
+
+# Android build tooling output (buildozer's cache and build products) -
+# never commit these, only the buildozer.spec config above.
+android/.buildozer/
+android/bin/
+android/cinqic_calculator/

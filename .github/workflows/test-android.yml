@@ -1,0 +1,293 @@
+name: Test Android
+
+# Builds an UNSIGNED DEBUG APK only, for CI-based verification of the
+# Kivy/Buildozer packaging itself (installability, package ID, permissions,
+# launchability). No keystore, no secrets, nothing published. The signed
+# release build lives in release-android.yml and only runs on an
+# android-v* tag.
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "src/cinqic_calculator/**"
+      - "tests/test_android_glue.py"
+      - ".github/workflows/test-android.yml"
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "src/cinqic_calculator/**"
+  workflow_dispatch:
+
+jobs:
+  android-glue-tests:
+    # The pure-Python android/logic.py glue and its tests need no Kivy or
+    # Android tooling at all -- run them on the same platform/version as
+    # the main desktop test job for a fast, cheap signal before the much
+    # slower buildozer build below.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install -r requirements-build.txt
+
+      - name: Lint
+        run: ruff check src tests android
+
+      - name: Run full suite (desktop + android glue)
+        run: python -m pytest tests/ -v
+
+  build-debug-apk:
+    needs: android-glue-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Buildozer's native build dependencies
+        # Installed directly, not via a third-party Docker action -- avoids
+        # depending on an external image/PPA staying compatible with
+        # whatever Ubuntu release the runner image ships next.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git zip unzip autoconf automake libtool libltdl-dev pkg-config \
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Install Buildozer and Cython
+        run: pip install -r android/requirements-android.txt
+
+      - name: Cache Buildozer's Android SDK/NDK downloads
+        # Deliberately narrow: only the downloaded SDK/NDK/build-tools
+        # (large, slow to fetch, never change between runs). NOT the
+        # build-*/  directories (compiled recipes, target venvs) -- a
+        # partially-built venv or recipe from a prior *failed* run being
+        # restored here previously corrupted a later run's pip install.
+        # Those directories are cheap to rebuild fresh every time.
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-*
+            ~/.buildozer/android/platform/apache-ant-*
+          key: buildozer-android-sdk-v2-${{ hashFiles('android/buildozer.spec') }}
+
+      - name: Bundle the shared core into the Android source tree
+        # buildozer.spec's source.dir is android/, and buildozer only
+        # packages files under source.dir. cinqic_calculator has zero
+        # third-party dependencies, so a plain copy is sufficient.
+        run: cp -r src/cinqic_calculator android/cinqic_calculator
+
+      - name: Build debug APK with Buildozer
+        # First run downloads the Android SDK/NDK, so this can take a
+        # while. Buildozer caches under ~/.buildozer between runs.
+        working-directory: android
+        run: yes | buildozer -v android debug
+
+      - name: Locate built APK
+        id: apk
+        run: |
+          apk_path=$(find android/bin -maxdepth 1 -name "*-debug.apk" | head -n1)
+          if [ -z "$apk_path" ]; then
+            echo "No debug APK found under android/bin" >&2
+            exit 1
+          fi
+          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect package identity and permissions
+        run: python3 scripts/inspect_android_apk.py "${{ steps.apk.outputs.path }}"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinqic-calculator-debug-apk
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 14
+
+  build-emulator-apk:
+    # A SEPARATE x86_64-only build, used only to smoke-test in the
+    # emulator-verify job below. GitHub-hosted runners are x86_64 hosts;
+    # KVM only accelerates same-architecture emulation, so an
+    # arm64-v8a/armeabi-v7a APK (the real build-debug-apk artifact, which
+    # matches an actual phone) would need slow, timeout-prone software
+    # ARM translation here. This job's APK is for CI verification only
+    # and is never uploaded anywhere Blessom would download it from.
+    needs: android-glue-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Buildozer's native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git zip unzip autoconf automake libtool libltdl-dev pkg-config \
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Install Buildozer and Cython
+        run: pip install -r android/requirements-android.txt
+
+      - name: Cache Buildozer's Android SDK/NDK downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-*
+            ~/.buildozer/android/platform/apache-ant-*
+          key: buildozer-android-sdk-v2-${{ hashFiles('android/buildozer.spec') }}
+
+      - name: Bundle the shared core into the Android source tree
+        run: cp -r src/cinqic_calculator android/cinqic_calculator
+
+      - name: Override android.archs to x86_64 for this emulator-only build
+        run: sed -i 's/^android.archs = .*/android.archs = x86_64/' android/buildozer.spec
+
+      - name: Build x86_64 debug APK with Buildozer
+        working-directory: android
+        run: yes | buildozer -v android debug
+
+      - name: Locate built APK
+        id: apk
+        run: |
+          apk_path=$(find android/bin -maxdepth 1 -name "*-debug.apk" | head -n1)
+          if [ -z "$apk_path" ]; then
+            echo "No debug APK found under android/bin" >&2
+            exit 1
+          fi
+          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload x86_64 emulator-test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinqic-calculator-emulator-apk
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 1
+
+  emulator-verify:
+    needs: build-emulator-apk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download x86_64 emulator-test APK
+        uses: actions/download-artifact@v4
+        with:
+          name: cinqic-calculator-emulator-apk
+          path: apk
+
+      - name: Locate downloaded APK
+        id: apk
+        run: |
+          apk_path=$(find apk -maxdepth 1 -name "*-debug.apk" | head -n1)
+          if [ -z "$apk_path" ]; then
+            echo "No debug APK found in downloaded artifact" >&2
+            exit 1
+          fi
+          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+
+      - name: Enable KVM for the emulator
+        # GitHub-hosted Ubuntu runners support nested virtualization, but
+        # the kvm device needs group permissions opened up first.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Write the ADB verification script
+        # reactivecircus/android-emulator-runner's `script:` field executes
+        # each line as a SEPARATE `sh -c` invocation (confirmed from a real
+        # CI run's log: one "[command]/usr/bin/sh -c <line>" per line) --
+        # shell variables, `set -e`, and multi-line if/then/fi do not
+        # survive across lines there. Writing the real logic to a file via
+        # a normal `run:` step (a single, ordinary shell session, no such
+        # quirk) and having the emulator-runner step just invoke that one
+        # file sidesteps the whole problem.
+        run: |
+          cat > "$RUNNER_TEMP/emulator-verify.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          APK="$1"
+
+          echo "--- adb install ---"
+          adb install -r "$APK"
+
+          echo "--- package appears in pm list ---"
+          adb shell pm list packages | grep com.cinqic.calculator
+
+          echo "--- launch main activity ---"
+          adb logcat -c
+          adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
+          sleep 15
+
+          echo "--- confirm the app process is actually running (no immediate crash) ---"
+          adb shell pidof com.cinqic.calculator
+
+          echo "--- logcat: fail if this process logged a FATAL EXCEPTION / AndroidRuntime crash ---"
+          adb logcat -d | tee /tmp/logcat.txt
+          if grep -q "FATAL EXCEPTION" /tmp/logcat.txt || (grep -A5 "AndroidRuntime" /tmp/logcat.txt | grep -q "com.cinqic.calculator"); then
+            echo "Crash detected in logcat" >&2
+            exit 1
+          fi
+
+          echo "--- force-stop and relaunch, to confirm the app restarts cleanly ---"
+          adb shell am force-stop com.cinqic.calculator
+          sleep 2
+          adb logcat -c
+          adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
+          sleep 15
+          adb shell pidof com.cinqic.calculator
+          adb logcat -d | tee /tmp/logcat-restart.txt
+          if grep -q "FATAL EXCEPTION" /tmp/logcat-restart.txt; then
+            echo "Crash detected on restart" >&2
+            exit 1
+          fi
+
+          echo "--- uninstall cleanly ---"
+          adb uninstall com.cinqic.calculator
+
+          echo "All emulator checks passed."
+          SCRIPT
+          chmod +x "$RUNNER_TEMP/emulator-verify.sh"
+
+      - name: Install, launch, and verify on an emulator via ADB
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: default
+          profile: pixel_5
+          disable-animations: true
+          script: "\"$RUNNER_TEMP/emulator-verify.sh\" \"${{ steps.apk.outputs.path }}\""
