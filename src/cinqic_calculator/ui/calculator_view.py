@@ -8,6 +8,7 @@ function and cannot disturb the calculation in progress.
 
 import datetime
 import tkinter as tk
+from tkinter import font as tkfont
 
 from ..calculator import Calculator
 from ..expression import PreviewState
@@ -308,7 +309,7 @@ class CalculatorView(tk.Frame):
         display_text = calc.display
         self.display_var.set(display_text)
         self.display_label.config(font=("Segoe UI", _display_font_size(display_text)))
-        self.expr_var.set(calc.expression_text)
+        self.expr_var.set(self._fit_expression(calc.expression_text))
 
         preview = calc.preview()
         if preview.state == PreviewState.OK:
@@ -340,6 +341,53 @@ class CalculatorView(tk.Frame):
         pending = _pending_operator(calc)
         for source, button in self._operator_buttons.items():
             set_button_active(button, source == pending, self.colors, kind="operator")
+
+    def _fit_expression(self, text: str) -> str:
+        """Trim a long expression from the left, marking that it was trimmed.
+
+        The tail is what matters while typing, so the start is what gets
+        dropped -- but silently clipping it would leave no sign that there is
+        more expression than is shown, so an ellipsis is prefixed.
+        """
+        if not text:
+            return text
+        width = self.expr_label.winfo_width()
+        if width <= 1:  # not laid out yet; nothing sensible to measure against
+            return text
+        measure = self._expr_font_measure()
+        if measure is None:
+            return text
+        available = width - 8
+        if measure(text) <= available:
+            return text
+
+        # Binary search for the longest tail that fits. Dropping one
+        # character at a time would cost a text-measurement per character on
+        # every keystroke, which is slow enough to be felt while typing.
+        low, high = 0, len(text)
+        while low < high:
+            middle = (low + high) // 2
+            if measure("\u2026" + text[middle:]) <= available:
+                high = middle
+            else:
+                low = middle + 1
+        return "\u2026" + text[low:]
+
+    def _expr_font_measure(self):
+        """A cached text-measuring function for the expression line's font.
+
+        Building a tkfont.Font is expensive; doing it on every refresh made
+        typing visibly slower.
+        """
+        font_spec = self.expr_label.cget("font")
+        cached = getattr(self, "_expr_font_cache", None)
+        if cached is None or cached[0] != font_spec:
+            try:
+                cached = (font_spec, tkfont.Font(font=font_spec))
+            except tk.TclError:  # pragma: no cover - font unavailable
+                return None
+            self._expr_font_cache = cached
+        return cached[1].measure
 
     def _record_history(self, expression: str):
         timestamp = datetime.datetime.now().isoformat(timespec="seconds")

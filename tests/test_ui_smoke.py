@@ -314,3 +314,72 @@ def test_persist_memory_toggle_off_clears_stored_value(app_window):
     settings_view.persist_memory_var.set(False)
     settings_view._on_persist_memory_toggle()
     assert settings_view.settings.get("memory_value") is None
+
+
+def test_a_long_expression_is_trimmed_and_marked_as_trimmed(app_window):
+    """Clipping silently would leave no sign there is more than is shown."""
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for _ in range(40):
+        for key in ("1", "2", "3", "+"):
+            view._on_key(key)
+    view._on_key("9")
+    app_window.update()
+    app_window.update_idletasks()
+    view._refresh()
+    app_window.update()
+
+    shown = view.expr_var.get()
+    assert shown.startswith("…"), "a trimmed expression must say so"
+    assert shown.rstrip().endswith("9"), "the tail being typed must stay visible"
+    assert len(shown) < len(view.calc.expression_text)
+
+
+def test_a_short_expression_is_not_trimmed(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in ("2", "+", "2"):
+        view._on_key(key)
+    app_window.update()
+    view._refresh()
+    assert view.expr_var.get() == "2 + 2"
+
+
+def test_the_window_does_not_grow_to_fit_a_long_expression(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    app_window.update_idletasks()
+    width_before = app_window.winfo_width()
+    for _ in range(40):
+        for key in ("1", "2", "3", "+"):
+            view._on_key(key)
+    app_window.update()
+    app_window.update_idletasks()
+    assert app_window.winfo_width() == width_before
+
+
+def test_typing_a_long_expression_stays_responsive(app_window):
+    """Guards the expression-trimming cost.
+
+    Trimming used to measure the text one character at a time, rebuilding
+    the font object on every refresh, which made typing visibly slow. The
+    threshold is deliberately generous - this is here to catch an
+    order-of-magnitude regression, not to benchmark the CI runner.
+    """
+    import time
+
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    app_window.update_idletasks()
+
+    started = time.perf_counter()
+    for _ in range(40):
+        for key in ("1", "2", "3", "+"):
+            view._on_key(key)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 3.0, f"160 key presses took {elapsed:.2f}s"
