@@ -292,14 +292,21 @@ jobs:
           # same handler the on-screen keys funnel into, so this exercises
           # entry, the live preview, equals, and backspace for real.
           adb logcat -c
-          # 125 x 24 =
+          # 125 x 24 -- stop short of "=" so the live preview is on screen
           adb shell input text "125"
           sleep 1
           adb shell input keyevent KEYCODE_STAR
           adb shell input text "24"
-          sleep 1
+          sleep 2
+
+          # Capture the live preview from the real device. This is the
+          # flagship feature, so the evidence for it should be a genuine
+          # emulator screenshot rather than a desktop rendering.
+          adb exec-out screencap -p > /tmp/emulator-live-preview.png || true
+
           adb shell input keyevent KEYCODE_ENTER
           sleep 2
+          adb exec-out screencap -p > /tmp/emulator-result.png || true
           # backspace, then a second calculation, then repeated equals
           adb shell input keyevent KEYCODE_DEL
           adb shell input text "7"
@@ -323,8 +330,14 @@ jobs:
           adb shell dumpsys activity activities | grep -q "$PKG" || {
             echo "App is no longer running an activity" >&2; exit 1; }
 
-          echo "--- capture a screenshot for inspection ---"
-          adb exec-out screencap -p > /tmp/emulator-screenshot.png || true
+          echo "--- capture the scientific sheet ---"
+          # Tap the "fx" key (top-right) to open the scientific sheet. Screen
+          # is 1080x2340 on the pixel_5 profile used by this job.
+          adb shell input tap 950 205
+          sleep 2
+          adb exec-out screencap -p > /tmp/emulator-scientific.png || true
+          adb shell input keyevent KEYCODE_ESCAPE
+          sleep 1
 
           echo "--- background and restore, to confirm no state corruption ---"
           adb shell input keyevent KEYCODE_HOME
@@ -366,7 +379,7 @@ jobs:
         with:
           name: emulator-evidence
           path: |
-            /tmp/emulator-screenshot.png
+            /tmp/emulator-*.png
             /tmp/logcat-*.txt
           if-no-files-found: ignore
           retention-days: 7
