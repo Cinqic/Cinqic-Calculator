@@ -196,7 +196,7 @@ class ExpressionModel:
                 # "2(" style juxtaposition: the user typed a value straight
                 # after another value, which universally means multiply.
                 self._push_token("*")
-            self.entry = digit if digit != "0" else "0"
+            self.entry = digit
             return
         if self.entry == "0":
             self.entry = digit
@@ -332,6 +332,10 @@ class ExpressionModel:
             except EvaluationError:
                 base = None
         result = base * (value / 100.0) if base is not None else value / 100.0
+        if not math.isfinite(result):
+            # repr(inf) is "inf", which would compile to a bare identifier the
+            # evaluator rejects. Leave the operand as the user typed it.
+            return
         self.tokens[-1] = repr(result)
 
     def backspace(self) -> None:

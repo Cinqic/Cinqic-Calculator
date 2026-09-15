@@ -298,3 +298,12 @@ def test_tidy_literal_preserves_exponent_sign():
     assert tidy_literal("1e-15") == "1e-15"
     assert tidy_literal("20.0") == "20"
     assert tidy_literal("-3") == "−3"
+
+
+def test_percent_leaves_the_operand_alone_when_the_result_overflows():
+    """repr(inf) is "inf", which would compile to an identifier the evaluator
+    rejects. The operand stays as typed instead."""
+    model = ExpressionModel(tokens=["1e308", "+", "99999"])
+    model.apply_percent()
+    assert model.tokens == ["1e308", "+", "99999"]
+    assert model.preview().state == PreviewState.OK
