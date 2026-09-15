@@ -20,6 +20,12 @@ on:
       - "src/cinqic_calculator/**"
   workflow_dispatch:
 
+# Only one run per branch/PR: pushing again supersedes the previous run
+# rather than leaving two multi-minute Android builds racing each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-glue-tests:
     # The pure-Python android/logic.py glue and its tests need no Kivy or

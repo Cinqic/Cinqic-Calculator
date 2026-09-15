@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
 
+# Only one run per branch/PR: pushing again supersedes the previous run
+# rather than leaving two multi-minute Android builds racing each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: ${{ matrix.name }}

@@ -12,6 +12,12 @@ on:
 permissions:
   contents: write
 
+# Deliberately no cancel-in-progress: a release must never be interrupted
+# part-way through building or uploading its assets.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-windows:
     runs-on: windows-latest
