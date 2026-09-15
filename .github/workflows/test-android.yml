@@ -292,11 +292,14 @@ jobs:
           # same handler the on-screen keys funnel into, so this exercises
           # entry, the live preview, equals, and backspace for real.
           adb logcat -c
-          # 125 x 24 -- stop short of "=" so the live preview is on screen
-          adb shell input text "125"
-          sleep 1
-          adb shell input keyevent KEYCODE_STAR
-          adb shell input text "24"
+          # 125 x 24 -- stop short of "=" so the live preview is on screen.
+          #
+          # Operators go through `input text`, not `input keyevent`:
+          # KEYCODE_STAR does not produce a text-input event, so SDL hands
+          # Kivy no codepoint and the app correctly saw "125" and "24" as one
+          # number. The inner single quotes matter too -- adb runs this
+          # through a shell on the device, which would otherwise glob the "*".
+          adb shell "input text '125*24'"
           sleep 2
 
           # Capture the live preview from the real device. This is the
@@ -307,12 +310,14 @@ jobs:
           adb shell input keyevent KEYCODE_ENTER
           sleep 2
           adb exec-out screencap -p > /tmp/emulator-result.png || true
-          # backspace, then a second calculation, then repeated equals
+          # backspace, then a second calculation, then repeated equals.
+          # Enter and Backspace stay as keyevents: the app handles those by
+          # key code rather than by codepoint.
           adb shell input keyevent KEYCODE_DEL
-          adb shell input text "7"
-          adb shell input keyevent KEYCODE_PLUS
-          adb shell input text "3"
+          adb shell "input text '7+3'"
           adb shell input keyevent KEYCODE_ENTER
+          sleep 1
+          adb exec-out screencap -p > /tmp/emulator-repeated-equals.png || true
           adb shell input keyevent KEYCODE_ENTER
           sleep 2
           # rapid entry: must not drop input or wedge the UI thread

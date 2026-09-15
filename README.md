@@ -10,7 +10,7 @@ A private, offline-first calculator for Windows, Linux, and Android.
 
 <img src="assets/screenshots/android-calculator.png" alt="The Android calculator screen showing 125 x 24 with a live result of 3000" width="300"> <img src="assets/screenshots/android-scientific.png" alt="The Android scientific sheet slid up over the keypad, with trigonometry, powers, logarithm and memory groups" width="300">
 
-*The redesigned Android interface, and the scientific sheet that slides up over the keypad.*
+*The redesigned Android interface, and the scientific sheet that slides up over the keypad — the second captured from a real Android emulator in CI.*
 
 Standard and scientific calculations with a live answer preview, unit
 conversion, practical financial tools, and optional local history — without an
