@@ -63,8 +63,12 @@ class Calculator:
             return _display_number(self.model.entry)
         # No operand is being typed (the user just pressed an operator, say).
         # Keep showing the most recent number rather than blanking to 0, so
-        # "125 x" still reads 125 on the big display.
+        # "125 x" still reads 125 on the big display. "Ans" resolves to its
+        # value here, otherwise an expression reading "Ans +" would sit above
+        # a display reading 0 while Ans held something else entirely.
         for token in reversed(self.model.tokens):
+            if token == "ans":
+                return _display_number(format_number(self.model.ans))
             if _safe_float(token) is not None:
                 return _display_number(token)
         preview = self.preview()

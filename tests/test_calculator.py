@@ -484,3 +484,22 @@ def test_memory_operations_survive_random_input():
         for key in [random.choice(keys) for _ in range(random.randint(1, 20))]:
             press_memory(calc, key)
         assert calc.memory is None or isinstance(calc.memory, float)
+
+
+def test_display_resolves_ans_rather_than_showing_zero():
+    """An expression reading "Ans +" must not sit above a display reading 0."""
+    calc = press(Calculator(), "4", "2", "+", "0", "=")
+    assert calc.ans == pytest.approx(42.0)
+    press(calc, "ans", "+")
+    assert calc.expression_text == "Ans +"
+    assert calc.display == "42"
+
+
+def test_display_after_an_error_then_an_operator_shows_the_last_answer():
+    calc = press(Calculator(), "4", "2", "+", "0", "=")
+    press(calc, "5", "/", "0", "=")
+    assert calc.has_error
+    press(calc, "+")
+    assert not calc.has_error
+    assert calc.expression_text == "Ans +"
+    assert calc.display == "42"
