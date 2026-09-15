@@ -253,6 +253,14 @@ jobs:
           PKG=com.cinqic.calculator
           ACTIVITY=$PKG/org.kivy.android.PythonActivity
 
+          # Key centres on the pixel_5 profile this job pins (1080x2340).
+          # Used only for the screenshot/interaction steps; the crash and
+          # permission checks below do not depend on them.
+          MULTIPLY_X=928; MULTIPLY_Y=1220
+          PLUS_X=928;     PLUS_Y=1769
+          EQUALS_X=928;   EQUALS_Y=2047
+          FX_X=950;       FX_Y=205
+
           fail_on_crash() {
             local logfile="$1"
             if grep -q "FATAL EXCEPTION" "$logfile" || grep -q "Python for android ended." "$logfile"; then
@@ -288,18 +296,25 @@ jobs:
           fail_on_crash /tmp/logcat-launch.txt
 
           echo "--- drive real input through the hardware-key path ---"
-          # These reach the app through CalculatorScreen._on_key_down, the
-          # same handler the on-screen keys funnel into, so this exercises
-          # entry, the live preview, equals, and backspace for real.
+          # A mix of typed text, hardware key events, and real taps on the
+          # on-screen keys -- together these exercise entry, the live
+          # preview, equals, repeated equals, backspace and rapid input
+          # through both paths the app accepts.
           adb logcat -c
           # 125 x 24 -- stop short of "=" so the live preview is on screen.
           #
-          # Operators go through `input text`, not `input keyevent`:
-          # KEYCODE_STAR does not produce a text-input event, so SDL hands
-          # Kivy no codepoint and the app correctly saw "125" and "24" as one
-          # number. The inner single quotes matter too -- adb runs this
-          # through a shell on the device, which would otherwise glob the "*".
-          adb shell "input text '125*24'"
+          # Digits go through `input text`, but the operator is a real TAP on
+          # the on-screen key. Neither keyboard route works for "x":
+          # KEYCODE_STAR produces no text-input event at all, and `input text`
+          # sends "*" as an unshifted "8". Tapping is also the better test --
+          # it exercises the touch path a user actually takes, through
+          # CalcButton, rather than the hardware-keyboard fallback.
+          echo "screen size: $(adb shell wm size)"
+          adb shell input text "125"
+          sleep 1
+          adb shell input tap $MULTIPLY_X $MULTIPLY_Y
+          sleep 1
+          adb shell input text "24"
           sleep 2
 
           # Capture the live preview from the real device. This is the
@@ -307,19 +322,22 @@ jobs:
           # emulator screenshot rather than a desktop rendering.
           adb exec-out screencap -p > /tmp/emulator-live-preview.png || true
 
-          adb shell input keyevent KEYCODE_ENTER
+          adb shell input tap $EQUALS_X $EQUALS_Y
           sleep 2
           adb exec-out screencap -p > /tmp/emulator-result.png || true
-          # backspace, then a second calculation, then repeated equals.
-          # Enter and Backspace stay as keyevents: the app handles those by
-          # key code rather than by codepoint.
+          # Backspace stays a key event, which does exercise the app's
+          # hardware-key path (it is handled by key code, not codepoint).
+          # The operator and equals are taps, for the reason above.
           adb shell input keyevent KEYCODE_DEL
-          adb shell "input text '7+3'"
-          adb shell input keyevent KEYCODE_ENTER
+          adb shell input text "7"
+          adb shell input tap $PLUS_X $PLUS_Y
+          adb shell input text "3"
+          adb shell input tap $EQUALS_X $EQUALS_Y
           sleep 1
-          adb exec-out screencap -p > /tmp/emulator-repeated-equals.png || true
-          adb shell input keyevent KEYCODE_ENTER
+          # Press equals a second time: 7 + 3 = 10, then = 13.
+          adb shell input tap $EQUALS_X $EQUALS_Y
           sleep 2
+          adb exec-out screencap -p > /tmp/emulator-repeated-equals.png || true
           # rapid entry: must not drop input or wedge the UI thread
           adb shell input text "1234567890"
           sleep 2
@@ -336,9 +354,8 @@ jobs:
             echo "App is no longer running an activity" >&2; exit 1; }
 
           echo "--- capture the scientific sheet ---"
-          # Tap the "fx" key (top-right) to open the scientific sheet. Screen
-          # is 1080x2340 on the pixel_5 profile used by this job.
-          adb shell input tap 950 205
+          # Tap the "fx" key (top-right) to open the scientific sheet.
+          adb shell input tap $FX_X $FX_Y
           sleep 2
           adb exec-out screencap -p > /tmp/emulator-scientific.png || true
           adb shell input keyevent KEYCODE_ESCAPE
