@@ -1,15 +1,17 @@
 """Android-app-only constants.
 
-Deliberately kept separate from ``cinqic_calculator.constants``: that module
-is shared with the Tkinter desktop frontend and its ``APP_VERSION``
-("1.0.1" as of this writing) tracks the *desktop Windows* release. The
-Android app is packaged and versioned independently (its own
-``buildozer.spec`` ``version``/``android.numeric_version``), so it gets its
-own small constants module instead of overloading the shared one.
+Kept separate from ``cinqic_calculator.constants`` because the Android app is
+*packaged* independently (its own ``buildozer.spec``
+``version``/``android.numeric_version``) and carries an Android
+``versionCode`` that the desktop has no equivalent for.
+
+Since 1.1.0 the two platforms share a single product version number, so
+``ANDROID_APP_VERSION`` and ``constants.APP_VERSION`` are expected to match --
+a test asserts they do not silently drift apart.
 """
 
-ANDROID_APP_VERSION = "1.0.0"
-ANDROID_VERSION_CODE = 1
+ANDROID_APP_VERSION = "1.1.0"
+ANDROID_VERSION_CODE = 2
 
 PRIVACY_SUMMARY = (
     "Cinqic Calculator works fully offline. There is no account, no ads, "

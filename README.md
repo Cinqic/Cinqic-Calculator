@@ -1,149 +1,241 @@
 # Cinqic Calculator
 
-A lightweight, private calculator for Windows and Android.
+A private, offline-first calculator for Windows, Linux, and Android.
 
 ![Cinqic Calculator](assets/branding/cinqic-calculator-horizontal.png)
 
-![Cinqic Calculator screenshot](assets/screenshots/calculator.png)
+![The Cinqic Calculator desktop interface, showing the expression 125 x 24 with a live preview of the result 3000 above a dark keypad](assets/screenshots/calculator.png)
 
-Perform standard and scientific calculations, convert common units, review
-local calculation history, and use practical financial tools — without an
-account, cloud service, or internet connection.
+*The desktop interface: the full expression, the value being typed, and the answer it would produce — before `=` is pressed.*
 
-**Juniper is not integrated into Cinqic Calculator 1.0. The calculator
-works locally without AI.** Juniper is Cinqic's future local-first
-assistant; this app is built with it in mind, honestly, without pretending
-it's already here. See [About Juniper](#juniper-relationship) below.
+<img src="assets/screenshots/android-calculator.png" alt="The Android calculator screen showing 125 x 24 with a live result of 3000" width="300"> <img src="assets/screenshots/android-scientific.png" alt="The Android scientific sheet slid up over the keypad, with trigonometry, powers, logarithm and memory groups" width="300">
+
+*The redesigned Android interface, and the scientific sheet that slides up over the keypad.*
+
+Standard and scientific calculations with a live answer preview, unit
+conversion, practical financial tools, and optional local history — without an
+account, a cloud service, or an internet connection.
+
+**Juniper is not integrated into Cinqic Calculator. The calculator works fully
+without AI.** See [About Juniper](#juniper-relationship) below.
+
+## What's new in 1.1.0
+
+- **Live answers.** The expression you are building stays on screen and its
+  result appears as you type, before you press `=`.
+- **A tactile Android keypad.** Keys respond with a short spring press, new
+  digits animate into the display, and a reduced-motion setting turns all of
+  it off while keeping instant feedback.
+- **A redesigned scientific mode** that slides up over the keypad as a grouped
+  sheet, instead of expanding the screen into an endless grid of small keys.
+- **More maths:** parentheses, `x^y`, `Ans`, `eˣ`, `10ˣ`, inverse
+  trigonometry, and hyperbolic functions.
+- **Linux is a supported platform**, tested in CI and shipped as a standalone
+  tarball.
+- **Relicensed under the Apache License 2.0.**
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list, including one behaviour
+change worth knowing about.
 
 ## Features
 
-- Standard calculator: arithmetic, decimals, percentages, square root,
-  parentheses (via keyboard/scientific expression entry), backspace,
-  clear entry/all, repeated equals.
-- Collapsible scientific mode: powers, roots, reciprocal, factorial,
-  absolute value, π, e, ln, log₁₀, sin/cos/tan with degree/radian toggle.
-- Calculator memory (MC/MR/M+/M-/MS) with a visible indicator.
-- Full keyboard shortcut support.
-- Unit conversion: length, mass, temperature, area, volume, speed, time,
+- **Standard calculator** — arithmetic, decimals, percentages, parentheses,
+  sign toggle, backspace, a clear key that shows whether it will clear the
+  entry or everything, and repeated equals.
+- **Live expression and answer preview** — the full expression is shown as you
+  build it, with the result it would produce. A half-typed expression stays
+  quiet rather than flashing an error.
+- **Scientific mode** — powers, roots, reciprocal, factorial, absolute value,
+  π, e, natural and base-10 logarithms, exponentials, sine/cosine/tangent and
+  their inverses, hyperbolic functions, and a persistent degree/radian mode.
+- **`Ans`** — reuse the previous result in a new calculation, kept separate
+  from calculator memory.
+- **Calculator memory** — MC/MR/M+/M−/MS with a visible indicator.
+- **Unit conversion** — length, mass, temperature, area, volume, speed, time,
   and data storage (decimal KB/MB/GB kept distinct from binary KiB/MiB/GiB).
-- Financial tools: percentages, discounts, sales tax, tips, bill splitting,
-  simple and compound interest — clearly labeled as estimates.
-- Local calculation history (up to 200 entries), fully optional.
-- Dark, light, and system themes.
-- Fully offline. No account, no telemetry, no ads.
+- **Financial tools** — percentages, discounts, sales tax, tips, bill
+  splitting, simple and compound interest — clearly labelled as estimates.
+- **Local calculation history** (up to 200 entries), fully optional.
+- **Accessibility** — reduced motion, keyboard navigation with visible focus,
+  adaptive text sizing for long results, and states never signalled by colour
+  alone.
+- **Dark, light, and system themes.**
+- **Fully offline.** No account, no telemetry, no analytics, no ads.
 
-## Windows system requirements
+Arithmetic follows normal operator precedence: `2 + 3 × 4` is `14`. Since the
+display shows the whole expression, evaluating it any other way would
+contradict what you can see.
 
-- Windows 10 or Windows 11, 64-bit.
-- No other software required — the installer and portable build include
-  everything needed to run.
+## Install
 
-## Installation
+### Windows
 
 1. Download `Cinqic-Calculator-Windows-x64-Setup.exe` from the
-   [v1.0.1 release](https://github.com/Cinqic/Cinqic-Calculator/releases/tag/v1.0.1)
-   (pinned rather than "latest" so this link isn't affected by future
-   Android releases).
-2. Run the installer and follow the prompts. Administrator privileges are
-   not required after installation.
+   [latest release](https://github.com/Cinqic/Cinqic-Calculator/releases/latest).
+2. Run the installer. Administrator privileges are not required.
 3. Launch **Cinqic Calculator** from the Start menu.
 
-A portable version (`Cinqic-Calculator-Windows-x64-Portable.zip`) is also
-available if you'd rather not install anything — unzip it and run
-`CinqicCalculator.exe` directly.
+A portable build (`Cinqic-Calculator-Windows-x64-Portable.zip`) is also
+available — unzip it and run `CinqicCalculator.exe` directly.
 
-**SmartScreen note:** this build is not code-signed. Windows may show an
-"unrecognized app" warning the first time you run it. This is expected for
-an unsigned open-source app; you can review the source code yourself before
-choosing to continue.
+Requires Windows 10 or 11, 64-bit. Nothing else needs to be installed.
 
-Verify your download against `SHA256SUMS.txt` from the same release if
-you'd like to confirm file integrity.
+**SmartScreen note:** this build is not code-signed, so Windows may show an
+"unrecognised app" warning the first time you run it. This is expected for an
+unsigned open-source app; you can review the source yourself before continuing.
 
-## Android
+### Linux
 
-A separate, independent Android frontend built with
-[Kivy](https://kivy.org) reuses the same tested calculation, conversion,
-financial, history, settings, and storage logic as the Windows app — see
-[`android/README.md`](android/README.md) for the app's layout and how to
-build it (Linux/CI only; it cannot be built on Windows).
+1. Download `Cinqic-Calculator-Linux-x86_64.tar.gz` from the
+   [latest release](https://github.com/Cinqic/Cinqic-Calculator/releases/latest).
+2. Extract it and run the launcher:
 
-- Package: `com.cinqic.calculator` · Version 1.0.0 · versionCode 1
-- Fully offline, no internet permission, no unnecessary permissions —
-  see [`android/buildozer.spec`](android/buildozer.spec).
-- Data (settings, optional history) lives in the app's private Android
-  storage, never in shared/external storage and never transmitted anywhere.
-- Distributed as a direct, signed APK download (SHA-256 checksum and
-  signing certificate fingerprint published with each release) — not
-  through the Google Play Store.
-- Juniper is not integrated into the Android app either.
+```bash
+tar -xzf Cinqic-Calculator-Linux-x86_64.tar.gz
+./CinqicCalculator/cinqic-calculator
+```
 
-## Development setup
+The bundle is self-contained: Python and Tk are included, so no system
+packages are required to run it. A `cinqic-calculator.desktop` file is
+included if you want a menu entry.
 
-```powershell
+Requires a 64-bit x86 Linux distribution with glibc 2.35 or newer (Ubuntu
+22.04 and later, Debian 12, Fedora 36+, and equivalents). Settings and history
+are stored under `$XDG_DATA_HOME/Cinqic/Calculator` (by default
+`~/.local/share/Cinqic/Calculator`).
+
+Running from source on Linux additionally needs your distribution's Tk
+package — `python3-tk` on Debian/Ubuntu, `python3-tkinter` on Fedora — because
+`tkinter` is not included in a base Python install there.
+
+### Android
+
+Download `Cinqic-Calculator-Android.apk` from the
+[latest Android release](https://github.com/Cinqic/Cinqic-Calculator/releases?q=android)
+and open it. Android will ask you to allow "install unknown apps" for whichever
+app you used to open the file — a normal requirement for any app installed
+outside the Play Store.
+
+- Package `com.cinqic.calculator`, Android 5.0 (API 21) or newer.
+- **The app requests no permissions at all** — no internet, no storage access
+  beyond its own private folder. You can verify this in
+  [`android/buildozer.spec`](android/buildozer.spec) or by inspecting the APK
+  manifest; CI asserts it on every build.
+- Distributed as a direct, signed APK with a published SHA-256 checksum and
+  signing certificate fingerprint — not through the Google Play Store.
+
+Verify any download against the `SHA256SUMS` file published with the same
+release.
+
+## Privacy
+
+Cinqic Calculator stores settings and optional history locally and never
+transmits them anywhere. See [PRIVACY.md](PRIVACY.md) for specifics, including
+exactly where that data lives on each platform.
+
+## Build from source
+
+```bash
 git clone https://github.com/Cinqic/Cinqic-Calculator.git
 cd Cinqic-Calculator
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e .
 pip install -r requirements-build.txt
 ```
 
-Run the app from source:
+Run it:
 
-```powershell
+```bash
 python -m cinqic_calculator
 ```
 
-## Tests
+### Tests
 
-```powershell
+```bash
 python -m pytest tests/ -v
 ```
 
-## Build (Windows)
+The GUI smoke tests need a display. They skip themselves without one, so on a
+headless Linux machine run them under a virtual display to actually exercise
+the interface:
 
-```powershell
-powershell -File scripts/build_windows.ps1
+```bash
+xvfb-run -a python -m pytest tests/ -v
 ```
 
-This creates a virtual environment, runs the test suite, builds the
-PyInstaller application, builds the Inno Setup installer and portable ZIP,
-and generates `SHA256SUMS.txt`. It exits non-zero if any step fails.
+Lint with `ruff check src tests android scripts`.
 
-## Privacy
+### Packaging
 
-Cinqic Calculator stores settings and optional history locally in
-`%LOCALAPPDATA%\Cinqic\Calculator\` and never transmits them anywhere. See
-[PRIVACY.md](PRIVACY.md) for details.
+| Platform | Command | Notes |
+| --- | --- | --- |
+| Windows | `powershell -File scripts/build_windows.ps1` | Needs Inno Setup 6 for the installer. |
+| Linux | `bash scripts/build_linux.sh` | Needs a Python with `tkinter` available. |
+| Android | see [`android/README.md`](android/README.md) | Linux/CI only; cannot be built on Windows. |
 
-## Juniper relationship
+Each desktop script runs the test suite, packages the app, smoke-tests the
+resulting binary, and generates checksums. All exit non-zero if any step fails.
 
-Cinqic Calculator is Cinqic's first small public software product. It is
-useful entirely on its own, without AI. Juniper — Cinqic's lightweight,
-local-first assistant — is still in development and is **not** integrated
-into this release. Future versions may add optional local Juniper
-explanations, while the calculator keeps working fully without them.
+## Architecture
 
-> AI should remain a choice.
+```
+src/cinqic_calculator/     Shared, platform-independent core
+  evaluator.py             Sandboxed AST expression evaluator (allowlist only)
+  expression.py            Expression model + pure live-answer preview
+  calculator.py            Calculator state machine, Ans, memory
+  conversions.py           Unit conversion
+  financial.py             Financial tools (Decimal-based)
+  history.py settings.py storage.py
+  ui/                      Tkinter desktop interface (Windows, Linux)
+android/                   Kivy Android interface (separate frontend)
+  logic.py                 Pure-Python glue and interaction decisions
+  widgets.py               Reusable animated keypad button + scientific sheet
+  screens/ kv/             Screens and their layouts
+```
+
+Both frontends are independent interfaces over the same tested core. Neither
+imports the other. Anything that is a real decision rather than a layout detail
+lives in plain Python — `src/cinqic_calculator/` or `android/logic.py` — so it
+can be tested without a GUI toolkit or an Android device.
+
+Expression evaluation goes through `evaluator.py`, which parses with Python's
+`ast` module and walks only an explicit allowlist of node types. There is no
+`eval()` or `exec()` anywhere in the project, and the live preview is a pure
+function that cannot alter calculator state.
 
 ## Release process
 
 Tagging a commit `vX.Y.Z` on `main` triggers
-[`release-windows.yml`](.github/workflows/release-windows.yml), which runs
-the test suite, builds the installer and portable ZIP, generates checksums,
-and publishes a GitHub Release with those assets attached. Releases are
-only published when tests and packaging succeed.
+[`release-desktop.yml`](.github/workflows/release-desktop.yml): it runs the
+test suite on Windows and Linux, builds the Windows installer and portable ZIP
+and the Linux tarball, smoke-tests each packaged binary, generates one combined
+`SHA256SUMS.txt`, verifies every asset against it, and publishes a release.
+Both platforms ship from the same tag, so they always represent the same
+version.
 
-Tagging a commit `android-vX.Y.Z` triggers
+Tagging `android-vX.Y.Z` triggers
 [`release-android.yml`](.github/workflows/release-android.yml): full test
-suite, release APK build, signing with the repository's release keystore,
-zip-align, signature verification, package/permission inspection, and
-checksum generation, publishing only if every step succeeds. Windows and
-Android releases are tagged and published independently so one platform's
-release can never affect the other's download links (see the pinned
-`v1.0.1` URLs on [cinqic.com/calculator](https://cinqic.com/calculator/)).
+suite, release APK build, signing, zip-align, signature verification,
+package/permission inspection, and checksum generation — publishing only if
+every step succeeds.
+
+Every pull request runs the test suite and lint on both Windows and Linux (with
+the Linux GUI tests under Xvfb), builds a debug APK, inspects its package
+identity and permissions, and installs and drives the app on an Android
+emulator.
+
+## Juniper relationship
+
+Cinqic Calculator is useful entirely on its own, without AI. Juniper —
+Cinqic's local-first assistant — is **not** integrated into this release, on
+any platform. Future versions may add optional local Juniper explanations,
+while the calculator keeps working fully without them.
+
+> AI should remain a choice.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Third-party components are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

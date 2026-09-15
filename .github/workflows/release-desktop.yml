@@ -1,0 +1,196 @@
+name: Desktop Release
+
+# Builds, verifies, and publishes the Windows and Linux desktop artifacts as
+# one release, so both platforms always represent the same product version.
+# Only runs on a v* tag, and only publishes if every prior step succeeds.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install -r requirements-build.txt
+
+      - name: Run the complete test suite
+        run: python -m pytest tests/ -v
+
+      - name: Build application with PyInstaller
+        run: |
+          pyinstaller --name "CinqicCalculator" --windowed --onedir --noconfirm `
+            --icon assets\icons\cinqic-calculator.ico `
+            --paths src `
+            src\cinqic_calculator\__main__.py
+
+      - name: Smoke-test the packaged executable
+        run: |
+          & "dist\CinqicCalculator\CinqicCalculator.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "Packaged executable failed to run" }
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: |
+          New-Item -ItemType Directory -Force -Path installer\Output | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\cinqic-calculator.iss
+
+      - name: Build portable ZIP
+        run: |
+          Compress-Archive -Path "dist\CinqicCalculator\*" -DestinationPath "installer\Output\Cinqic-Calculator-Windows-x64-Portable.zip"
+
+      - name: Generate SHA-256 checksums
+        run: |
+          python scripts\calculate_checksum.py `
+            installer\Output\SHA256SUMS.txt `
+            installer\Output\Cinqic-Calculator-Windows-x64-Setup.exe `
+            installer\Output\Cinqic-Calculator-Windows-x64-Portable.zip
+
+      - name: Verify release artifacts
+        run: python scripts\verify_release.py installer\Output windows
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            installer/Output/Cinqic-Calculator-Windows-x64-Setup.exe
+            installer/Output/Cinqic-Calculator-Windows-x64-Portable.zip
+          retention-days: 1
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Tk and a virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-tk tk xvfb
+
+      - name: Build, test, and package
+        # build_linux.sh runs the test suite, packages with PyInstaller,
+        # smoke-tests the resulting binary, and verifies the checksums.
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" bash scripts/build_linux.sh
+
+      - name: Verify the tarball runs from a clean extraction
+        # Proves the bundle is self-contained rather than quietly relying on
+        # the build machine's Python or Tk.
+        run: |
+          mkdir -p /tmp/verify && tar -xzf dist/linux/Cinqic-Calculator-Linux-x86_64.tar.gz -C /tmp/verify
+          env -i HOME=/tmp/verify-home PATH=/usr/bin:/bin \
+            /tmp/verify/CinqicCalculator/cinqic-calculator --version
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: dist/linux/Cinqic-Calculator-Linux-x86_64.tar.gz
+          retention-days: 1
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: staging
+          merge-multiple: true
+
+      - name: Generate one combined checksum file
+        # A single SHA256SUMS.txt covering every asset in the release, so a
+        # user verifying a download has one file to fetch regardless of
+        # which platform they are on.
+        working-directory: staging
+        run: |
+          ls -la
+          python ../scripts/calculate_checksum.py SHA256SUMS.txt \
+            Cinqic-Calculator-Windows-x64-Setup.exe \
+            Cinqic-Calculator-Windows-x64-Portable.zip \
+            Cinqic-Calculator-Linux-x86_64.tar.gz
+
+      - name: Verify every published asset against that file
+        working-directory: staging
+        run: sha256sum -c SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            staging/Cinqic-Calculator-Windows-x64-Setup.exe
+            staging/Cinqic-Calculator-Windows-x64-Portable.zip
+            staging/Cinqic-Calculator-Linux-x86_64.tar.gz
+            staging/SHA256SUMS.txt
+          body: |
+            ## Cinqic Calculator ${{ github.ref_name }}
+
+            A private, offline calculator for Windows and Linux.
+
+            ### What's new
+            - **Live answers.** The full expression stays on screen and the
+              result appears as you type, before you press `=`.
+            - **Redesigned keypad** with a clearer layout, an active-operator
+              indicator, and a clear key that says what it will do.
+            - **Redesigned scientific mode**, grouped by purpose, with
+              parentheses, `x^y`, `Ans`, exponentials, and inverse
+              trigonometry.
+            - **Linux is now a supported platform**, tested in CI and shipped
+              as a standalone tarball.
+            - Now licensed under **Apache License 2.0**.
+
+            ### Install on Windows
+            Download `Cinqic-Calculator-Windows-x64-Setup.exe` and run it (no
+            administrator privileges required). A portable ZIP is also
+            available if you'd rather not install anything.
+
+            ### Install on Linux
+            Download `Cinqic-Calculator-Linux-x86_64.tar.gz`, extract it, and
+            run `./CinqicCalculator/cinqic-calculator`. The bundle is
+            self-contained -- no Python or Tk installation required.
+
+            ### Privacy
+            Works fully offline. No account, telemetry, or ads. See
+            [PRIVACY.md](https://github.com/${{ github.repository }}/blob/main/PRIVACY.md).
+
+            ### Known limitations
+            These builds are not code-signed. Windows SmartScreen may show an
+            unfamiliar-app warning on first run - this is expected for an
+            unsigned open-source build.
+
+            Juniper is not integrated into this release; the calculator works
+            fully without AI.
+
+            ### Verify your download
+            Checksums for every asset are in `SHA256SUMS.txt`.
+
+            Source: https://github.com/${{ github.repository }}

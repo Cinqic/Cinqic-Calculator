@@ -9,6 +9,7 @@ venv/
 *.spec
 !android/buildozer.spec
 .build-venv/
+.build-venv-linux/
 installer/Output/
 scripts/checksums/
 .coverage

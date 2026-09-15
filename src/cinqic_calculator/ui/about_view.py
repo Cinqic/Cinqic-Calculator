@@ -9,8 +9,9 @@ from .components import section_label
 _LINKS = {
     "Cinqic website": "https://cinqic.com",
     "Source repository": "https://github.com/Cinqic/Cinqic-Calculator",
-    "License (MIT)": "https://github.com/Cinqic/Cinqic-Calculator/blob/main/LICENSE",
+    "License (Apache-2.0)": "https://github.com/Cinqic/Cinqic-Calculator/blob/main/LICENSE",
     "Privacy information": "https://github.com/Cinqic/Cinqic-Calculator/blob/main/PRIVACY.md",
+    "Third-party notices": "https://github.com/Cinqic/Cinqic-Calculator/blob/main/THIRD_PARTY_NOTICES.md",
 }
 
 
@@ -25,8 +26,9 @@ class AboutView(tk.Frame):
         section_label(self, f"Cinqic Calculator {APP_VERSION}", c, size=16).pack(anchor="w", padx=16, pady=(16, 8))
 
         self._paragraph(
-            "Cinqic Calculator is a lightweight desktop calculator designed to "
-            "work locally without accounts, cloud services, or artificial intelligence."
+            "Cinqic Calculator is a private, offline-first calculator for Windows, "
+            "Linux, and Android, designed to work locally without accounts, cloud "
+            "services, or artificial intelligence."
         )
 
         section_label(self, "Part of the developing Juniper ecosystem", c).pack(anchor="w", padx=16, pady=(16, 4))

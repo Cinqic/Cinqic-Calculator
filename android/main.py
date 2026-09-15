@@ -70,9 +70,11 @@ for _kv_filename in ("scientific.kv", "calculator.kv", "convert.kv", "financial.
 
 
 class CinqicCalculatorApp(App):
-    """Root Kivy application. Package identity (com.cinqic.calculator),
-    version (1.0.0), and versionCode (1) are set in buildozer.spec, not
-    here - this class only sets the in-app window title.
+    """Root Kivy application.
+
+    Package identity (com.cinqic.calculator), version, and versionCode are
+    set in buildozer.spec, not here - this class only sets the in-app window
+    title.
     """
 
     def build(self):
