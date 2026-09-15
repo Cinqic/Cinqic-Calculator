@@ -13,7 +13,14 @@ import pytest
 
 from android.logic import (
     ScreenInputRouter,
+    accessibility_label,
+    animations_enabled,
+    entry_animation,
+    haptics_enabled,
     memory_controls_enabled,
+    parenthesis_label,
+    press_animation,
+    preview_line,
     persist_memory_value,
     record_history_entry,
     resolve_data_dir,
@@ -57,14 +64,14 @@ def test_memory_controls_disabled_when_memory_empty():
 
 def test_memory_controls_enabled_after_store():
     calc = Calculator()
-    calc.display = "5"
+    calc.input_digit("5")
     calc.memory_store()
     assert memory_controls_enabled(calc) is True
 
 
 def test_memory_controls_disabled_again_after_clear():
     calc = Calculator()
-    calc.display = "5"
+    calc.input_digit("5")
     calc.memory_store()
     assert memory_controls_enabled(calc) is True
 
@@ -74,7 +81,7 @@ def test_memory_controls_disabled_again_after_clear():
 
 def test_memory_controls_enabled_after_memory_add_from_empty():
     calc = Calculator()
-    calc.display = "3"
+    calc.input_digit("3")
     calc.memory_add()
     assert memory_controls_enabled(calc) is True
 
@@ -88,7 +95,9 @@ def test_persist_memory_value_writes_when_enabled(tmp_path):
     settings = Settings(str(tmp_path / "settings.json"))
     settings.set("persist_memory", True)
     calc = Calculator()
-    calc.display = "42"
+    calc.input_digit("4")
+
+    calc.input_digit("2")
     calc.memory_store()
 
     persist_memory_value(calc, settings)
@@ -101,7 +110,9 @@ def test_persist_memory_value_does_nothing_when_disabled(tmp_path):
     settings = Settings(str(tmp_path / "settings.json"))
     settings.set("persist_memory", False)
     calc = Calculator()
-    calc.display = "42"
+    calc.input_digit("4")
+
+    calc.input_digit("2")
     calc.memory_store()
 
     persist_memory_value(calc, settings)
@@ -178,7 +189,7 @@ def test_persist_memory_toggle_round_trip_through_disk(tmp_path):
 
     set_persist_memory(settings, True)
     calc = Calculator()
-    calc.display = "8"
+    calc.input_digit("8")
     calc.memory_store()
     persist_memory_value(calc, settings)
 
@@ -294,3 +305,103 @@ def test_screen_input_router_guards_against_cross_view_leak():
     handle_global_digit_key("5", router, calc)
     handle_global_digit_key("7", router, calc)
     assert calc.display == "57"
+
+
+# ---------------------------------------------------------------------------
+# Interaction decisions (reduced motion, haptics, keypad labels)
+# ---------------------------------------------------------------------------
+class _FakeSettings:
+    def __init__(self, **values):
+        self.values = values
+
+    def get(self, key, default=None):
+        return self.values.get(key, default)
+
+
+def test_animations_are_on_by_default():
+    assert animations_enabled(_FakeSettings()) is True
+
+
+def test_reduced_motion_setting_disables_animation():
+    assert animations_enabled(_FakeSettings(reduced_motion=True)) is False
+
+
+def test_press_animation_is_brief_enough_to_feel_tactile():
+    scale, overshoot, press_time, release_time = press_animation(reduced_motion=False)
+    assert 0.94 <= scale <= 0.97, "press should compress, not collapse"
+    assert overshoot > 1.0, "release should rebound past rest"
+    assert (press_time + release_time) <= 0.2, "must not feel sluggish"
+
+
+def test_press_animation_is_skipped_under_reduced_motion():
+    assert press_animation(reduced_motion=True) is None
+
+
+def test_entry_animation_is_skipped_under_reduced_motion():
+    assert entry_animation(reduced_motion=True) is None
+    assert entry_animation(reduced_motion=False) is not None
+
+
+def test_haptics_default_on_but_settable():
+    assert haptics_enabled(_FakeSettings()) is True
+    assert haptics_enabled(_FakeSettings(haptics=False)) is False
+
+
+@pytest.mark.parametrize(
+    ("open_parens", "ends_operand", "expected"),
+    [
+        (0, False, "("),
+        (0, True, "("),
+        (1, False, "("),
+        (1, True, ")"),
+        (2, True, ")"),
+    ],
+)
+def test_combined_parenthesis_key_picks_the_right_bracket(open_parens, ends_operand, expected):
+    assert parenthesis_label(open_parens, ends_operand) == expected
+
+
+def test_preview_line_formats_an_answer():
+    from cinqic_calculator.expression import Preview, PreviewState
+
+    assert preview_line(Preview(PreviewState.OK, value=3.0, text="3")) == "= 3"
+
+
+def test_preview_line_is_silent_while_incomplete():
+    from cinqic_calculator.expression import Preview, PreviewState
+
+    assert preview_line(Preview(PreviewState.INCOMPLETE)) == ""
+    assert preview_line(Preview(PreviewState.EMPTY)) == ""
+
+
+def test_preview_line_shows_a_real_error():
+    from cinqic_calculator.expression import Preview, PreviewState
+
+    assert preview_line(Preview(PreviewState.ERROR, text="Cannot divide by zero")) == "Cannot divide by zero"
+
+
+def test_symbol_keys_have_spoken_labels():
+    assert accessibility_label("÷") == "divide"
+    assert accessibility_label("⌫") == "backspace"
+    assert accessibility_label("7") == "7"
+
+
+# ---------------------------------------------------------------------------
+# Haptics: must degrade silently off-device, never claim false success
+# ---------------------------------------------------------------------------
+def test_haptics_are_unavailable_without_an_android_activity():
+    import android.haptics as haptics_module
+
+    haptics_module.reset()
+    assert haptics_module.is_available() is False
+    assert haptics_module.tap() is False
+    haptics_module.reset()
+
+
+def test_haptics_never_raise_when_unavailable():
+    import android.haptics as haptics_module
+
+    haptics_module.reset()
+    for _ in range(5):
+        assert haptics_module.tap() is False
+    haptics_module.reset()

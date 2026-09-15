@@ -22,6 +22,13 @@ from cinqic_calculator.settings import Settings
 
 __all__ = [
     "resolve_data_dir",
+    "animations_enabled",
+    "haptics_enabled",
+    "press_animation",
+    "entry_animation",
+    "parenthesis_label",
+    "preview_line",
+    "accessibility_label",
     "memory_controls_enabled",
     "restore_persisted_memory",
     "persist_memory_value",
@@ -142,3 +149,102 @@ class ScreenInputRouter:
 
     def is_active(self, screen_name: str) -> bool:
         return self._active_screen_name == screen_name
+
+
+# ---------------------------------------------------------------------------
+# Interaction decisions
+#
+# The keypad's feel is described here, in plain Python, rather than inline in
+# a .kv rule -- same reasoning as the memory/router logic above: it is real
+# decision logic, so it belongs where it can be unit-tested without Kivy or
+# an Android device present.
+# ---------------------------------------------------------------------------
+
+#: Press/release timings for the keypad's spring response, in seconds. The
+#: total is kept well under the ~200ms at which a control starts to feel
+#: sluggish rather than tactile.
+PRESS_SCALE = 0.96
+RELEASE_OVERSHOOT = 1.03
+PRESS_DURATION = 0.045
+RELEASE_DURATION = 0.11
+
+#: The entry animation for a changed display: a short rise and fade-in.
+ENTRY_OFFSET_DP = 10
+ENTRY_DURATION = 0.13
+
+
+def animations_enabled(settings) -> bool:
+    """Whether motion should be used, honouring the reduced-motion setting.
+
+    Animations are on by default; the setting is an explicit opt-out.
+    """
+    return not bool(settings.get("reduced_motion", False))
+
+
+def haptics_enabled(settings) -> bool:
+    return bool(settings.get("haptics", True))
+
+
+def press_animation(reduced_motion: bool):
+    """Return (press_scale, overshoot, press_time, release_time), or None.
+
+    With reduced motion the keypad must still acknowledge a press instantly,
+    so the caller falls back to a colour-only state change rather than to no
+    feedback at all.
+    """
+    if reduced_motion:
+        return None
+    return (PRESS_SCALE, RELEASE_OVERSHOOT, PRESS_DURATION, RELEASE_DURATION)
+
+
+def entry_animation(reduced_motion: bool):
+    """Return (offset_dp, duration) for a freshly-changed display, or None."""
+    if reduced_motion:
+        return None
+    return (ENTRY_OFFSET_DP, ENTRY_DURATION)
+
+
+def parenthesis_label(open_parens: int, ends_operand: bool) -> str:
+    """Which bracket a single combined "( )" key should insert next.
+
+    One key instead of two keeps the keypad at four columns. It closes a
+    group when one is open and there is something inside it to close, and
+    opens a new group otherwise.
+    """
+    if open_parens > 0 and ends_operand:
+        return ")"
+    return "("
+
+
+def preview_line(preview) -> str:
+    """The text for the live answer line, or "" when it should stay silent."""
+    state = getattr(preview, "state", None)
+    if state == "ok":
+        return f"= {preview.text}"
+    if state == "error":
+        return preview.text
+    return ""
+
+
+#: Spoken/described labels for keys whose face is a symbol. Screen readers
+#: otherwise announce these as punctuation or skip them entirely.
+_ACCESSIBILITY_LABELS = {
+    "\u00f7": "divide",
+    "\u00d7": "multiply",
+    "\u2212": "minus",
+    "+": "plus",
+    "=": "equals",
+    "%": "percent",
+    "\u232b": "backspace",
+    "\u00b1": "plus or minus",
+    ".": "decimal point",
+    "(": "open bracket",
+    ")": "close bracket",
+    "AC": "clear all",
+    "CE": "clear entry",
+    "Ans": "previous answer",
+}
+
+
+def accessibility_label(value: str) -> str:
+    return _ACCESSIBILITY_LABELS.get(value, value)

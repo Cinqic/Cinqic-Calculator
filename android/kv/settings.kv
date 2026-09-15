@@ -49,4 +49,33 @@
                 active: root.persist_memory_enabled
                 on_active: root.toggle_persist_memory(self.active)
 
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            Label:
+                text: "Reduce motion"
+            Switch:
+                active: root.reduced_motion_enabled
+                on_active: root.toggle_reduced_motion(self.active)
+
+        BoxLayout:
+            size_hint_y: None
+            height: "44dp"
+            Label:
+                text: "Haptic feedback"
+            Switch:
+                active: root.haptics_setting_enabled
+                disabled: not root.haptics_supported
+                on_active: root.toggle_haptics(self.active)
+
+        Label:
+            text: root.haptics_note
+            font_size: "12sp"
+            size_hint_y: None
+            height: "22dp"
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+            color: 0.6, 0.6, 0.6, 1
+
         Widget:

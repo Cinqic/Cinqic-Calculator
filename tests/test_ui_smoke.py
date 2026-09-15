@@ -55,17 +55,120 @@ def test_calculator_view_button_and_keyboard_callbacks(app_window):
     app_window.show_view("Calculator")
     calc_view = app_window.views["Calculator"]
     calc_view.calc.clear_all()
-    calc_view._on_button("5")
-    calc_view._on_button("+")
-    calc_view._on_button("3")
-    calc_view._on_button("=")
+    for key in ("5", "+", "3", "="):
+        calc_view._on_key(key)
     app_window.update()
     assert calc_view.calc.display == "8"
 
     calc_view.copy_result()
-    calc_view._backspace()
+    calc_view._on_key("\u232b")
     calc_view.toggle_scientific()
-    calc_view._apply_scientific("square")
+    calc_view._dispatch("px:square")
+    calc_view._dispatch("fn:sin")
+    calc_view._dispatch("const:pi")
+    calc_view._dispatch("pow10")
+    calc_view.toggle_degree_mode()
+    app_window.update()
+    assert calc_view.winfo_exists()
+
+
+def test_expression_and_preview_labels_are_wired_to_real_state(app_window):
+    """Regression: the expression label existed but was never populated."""
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in ("1", "2", "5", "\u00d7", "2", "4"):
+        view._on_key(key)
+    app_window.update()
+    assert view.expr_var.get() == "125 \u00d7 24"
+    assert view.display_var.get() == "24"
+    assert view.preview_var.get() == "= 3000"
+
+
+def test_preview_clears_once_the_result_is_committed(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in ("8", "\u00d7", "8", "="):
+        view._on_key(key)
+    app_window.update()
+    assert view.display_var.get() == "64"
+    assert view.expr_var.get() == "8 \u00d7 8 ="
+    assert view.preview_var.get() == ""
+
+
+def test_unfinished_expression_does_not_show_an_error(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in ("7", "+"):
+        view._on_key(key)
+    app_window.update()
+    assert view.preview_var.get() == ""
+    assert view.display_var.get() == "7"
+
+
+def test_divide_by_zero_shows_a_readable_message(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in ("5", "\u00f7", "0", "="):
+        view._on_key(key)
+    app_window.update()
+    assert view.display_var.get() == "Error"
+    assert "divide by zero" in view.expr_var.get().lower()
+    assert "Traceback" not in view.expr_var.get()
+
+
+def test_active_operator_is_indicated(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in ("6", "\u00d7"):
+        view._on_key(key)
+    app_window.update()
+    assert view._operator_buttons["*"]._cinqic_active is True
+    assert view._operator_buttons["+"]._cinqic_active is False
+    assert str(view._operator_buttons["*"].cget("relief")) == "sunken"
+
+
+def test_clear_key_relabels_itself(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    app_window.update()
+    assert view._keypad_buttons["AC"].cget("text") == "AC"
+    for key in ("4", "+", "2"):
+        view._on_key(key)
+    app_window.update()
+    assert view._keypad_buttons["AC"].cget("text") == "CE"
+
+
+def test_long_results_shrink_the_display_font(app_window):
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    view.calc.clear_all()
+    for key in "123456789":
+        view._on_key(key)
+    view._on_key("\u00d7")
+    for key in "987654321":
+        view._on_key(key)
+    view._on_key("=")
+    app_window.update()
+    size = int(str(view.display_label.cget("font")).split()[-1])
+    assert size < 40, "a long result must shrink to stay readable"
+
+
+def test_scientific_panel_does_not_squeeze_the_keypad(app_window):
+    """Regression: opening the panel flattened the number keys into slivers."""
+    app_window.show_view("Calculator")
+    view = app_window.views["Calculator"]
+    if not view.scientific_visible:
+        view.toggle_scientific()
+    app_window.update()
+    app_window.update_idletasks()
+    assert view.grid_frame.winfo_height() >= 5 * 44
+    view.toggle_scientific()
     app_window.update()
 
 
@@ -123,8 +226,8 @@ def test_memory_indicator_and_buttons_disabled_when_empty(app_window):
     app_window.update()
 
     assert calc_view.memory_indicator.cget("text") == ""
-    assert str(calc_view.mc_button.cget("state")) == "disabled"
-    assert str(calc_view.mr_button.cget("state")) == "disabled"
+    assert str(calc_view._memory_buttons["MC"].cget("state")) == "disabled"
+    assert str(calc_view._memory_buttons["MR"].cget("state")) == "disabled"
 
 
 def test_memory_buttons_enable_after_store_and_disable_after_clear(app_window):
@@ -133,18 +236,18 @@ def test_memory_buttons_enable_after_store_and_disable_after_clear(app_window):
     calc_view.calc.clear_all()
     calc_view._refresh()
 
-    calc_view._on_button("5")
-    calc_view._on_button("MS")
+    calc_view._on_key("5")
+    calc_view._on_memory("MS")
     app_window.update()
     assert calc_view.memory_indicator.cget("text") == "M"
-    assert str(calc_view.mc_button.cget("state")) == "normal"
-    assert str(calc_view.mr_button.cget("state")) == "normal"
+    assert str(calc_view._memory_buttons["MC"].cget("state")) == "normal"
+    assert str(calc_view._memory_buttons["MR"].cget("state")) == "normal"
 
-    calc_view._on_button("MC")
+    calc_view._on_memory("MC")
     app_window.update()
     assert calc_view.memory_indicator.cget("text") == ""
-    assert str(calc_view.mc_button.cget("state")) == "disabled"
-    assert str(calc_view.mr_button.cget("state")) == "disabled"
+    assert str(calc_view._memory_buttons["MC"].cget("state")) == "disabled"
+    assert str(calc_view._memory_buttons["MR"].cget("state")) == "disabled"
 
 
 def test_keyboard_input_does_not_leak_from_other_views_to_calculator(app_window):
@@ -197,7 +300,7 @@ def test_memory_restores_on_init_when_persist_memory_enabled(app_window, tmp_pat
     try:
         assert view.calc.memory == 42.0
         assert view.memory_indicator.cget("text") == "M"
-        assert str(view.mc_button.cget("state")) == "normal"
+        assert str(view._memory_buttons["MC"].cget("state")) == "normal"
     finally:
         view.destroy()
 

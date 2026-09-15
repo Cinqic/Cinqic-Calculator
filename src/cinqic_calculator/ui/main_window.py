@@ -14,7 +14,7 @@ from .settings_view import SettingsView
 
 _NAV_ITEMS = ["Calculator", "Convert", "Financial", "History", "Settings", "About"]
 _MIN_WIDTH = 640
-_MIN_HEIGHT = 640
+_MIN_HEIGHT = 700
 
 
 class MainWindow(tk.Tk):
@@ -43,7 +43,7 @@ class MainWindow(tk.Tk):
 
     def _restore_geometry(self):
         width = self.settings.get("window_width", 900) or 900
-        height = self.settings.get("window_height", 600) or 600
+        height = self.settings.get("window_height", 800) or 800
         x = self.settings.get("window_x")
         y = self.settings.get("window_y")
         if x is not None and y is not None:
