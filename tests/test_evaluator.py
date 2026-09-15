@@ -1,8 +1,9 @@
 import math
+import time
 
 import pytest
 
-from cinqic_calculator.evaluator import EvaluationError, evaluate
+from cinqic_calculator.evaluator import ErrorCode, EvaluationError, evaluate
 
 
 @pytest.mark.parametrize(
@@ -83,3 +84,86 @@ def test_unknown_name_rejected():
 def test_complex_result_rejected():
     with pytest.raises(EvaluationError):
         evaluate("(-8) ** (1/3)")
+
+
+# ---------------------------------------------------------------------------
+# 1.1.0: typed errors, angle mode, and exponentiation limits
+# ---------------------------------------------------------------------------
+def test_errors_carry_a_stable_code():
+    for expression, code in [
+        ("1/0", ErrorCode.DIVIDE_BY_ZERO),
+        ("sqrt(-1)", ErrorCode.DOMAIN),
+        ("9**99999", ErrorCode.OVERFLOW),
+        ("1 +", ErrorCode.INVALID),
+    ]:
+        with pytest.raises(EvaluationError) as info:
+            evaluate(expression)
+        assert info.value.code == code, expression
+
+
+def test_error_messages_are_human_readable():
+    """Raw Python exception text must never reach the product UI."""
+    for expression in ("1/0", "sqrt(-1)", "log(0)", "9**99999"):
+        with pytest.raises(EvaluationError) as info:
+            evaluate(expression)
+        message = str(info.value)
+        assert "Traceback" not in message
+        assert "math domain error" not in message
+        assert message[0].isupper()
+
+
+def test_degree_mode_selects_the_trig_table():
+    assert evaluate("sin(30)", degrees=True) == pytest.approx(0.5)
+    assert evaluate("sin(30)", degrees=False) == pytest.approx(-0.988, abs=1e-3)
+    assert evaluate("asin(0.5)", degrees=True) == pytest.approx(30.0)
+
+
+def test_tangent_at_a_pole_is_rejected_rather_than_returning_a_huge_number():
+    with pytest.raises(EvaluationError) as info:
+        evaluate("tan(90)", degrees=True)
+    assert info.value.code == ErrorCode.DOMAIN
+
+
+def test_huge_exponent_is_rejected_immediately():
+    """Regression: 9**9**9 used to hang the evaluator allocating an integer.
+
+    An unbounded integer power is a denial of service in what is meant to be
+    a sandboxed evaluator, so both the exponent and the result magnitude are
+    bounded before any work happens.
+    """
+    started = time.monotonic()
+    with pytest.raises(EvaluationError) as info:
+        evaluate("9**9**9")
+    assert info.value.code == ErrorCode.OVERFLOW
+    assert time.monotonic() - started < 1.0, "must fail fast, not grind"
+
+
+def test_deeply_nested_input_does_not_crash_the_process():
+    with pytest.raises(EvaluationError):
+        evaluate("(" * 500 + "1" + ")" * 500)
+
+
+def test_new_functions_are_available():
+    assert evaluate("exp(0)") == pytest.approx(1.0)
+    assert evaluate("sinh(0)") == pytest.approx(0.0)
+    assert evaluate("cosh(0)") == pytest.approx(1.0)
+    assert evaluate("atan(0)") == pytest.approx(0.0)
+
+
+def test_calls_must_take_exactly_one_argument():
+    with pytest.raises(EvaluationError):
+        evaluate("sqrt(1, 2)")
+    with pytest.raises(EvaluationError):
+        evaluate("sqrt()")
+
+
+def test_zero_to_a_negative_power_is_a_division_by_zero():
+    with pytest.raises(EvaluationError) as info:
+        evaluate("0 ** -1")
+    assert info.value.code == ErrorCode.DIVIDE_BY_ZERO
+
+
+def test_negative_base_with_a_fractional_exponent_is_a_domain_error():
+    with pytest.raises(EvaluationError) as info:
+        evaluate("(-8) ** 0.5")
+    assert info.value.code == ErrorCode.DOMAIN
