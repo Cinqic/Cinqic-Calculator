@@ -419,3 +419,68 @@ def not_crashed(calc):
     calc.preview()
     calc.input_digit("1")
     return True
+
+
+# ---------------------------------------------------------------------------
+# Robustness
+# ---------------------------------------------------------------------------
+_FUZZ_KEYS = (
+    list("0123456789")
+    + [".", "+/-", "+", "-", "*", "/", "**", "=", "(", ")", "%", "back", "AC", "CE"]
+    + ["ans", "pi", "e", "fn:sqrt", "fn:ln", "fn:sin", "fn:log", "fn:exp"]
+    + ["px:square", "px:cube", "px:factorial"]
+)
+
+
+def test_random_button_mashing_never_raises():
+    """No sequence of key presses should be able to crash the calculator.
+
+    A calculator is the kind of thing people hammer. The seed is fixed so a
+    failure is reproducible, and the invariants checked are the ones the UI
+    depends on every frame: the display and expression are always strings,
+    and a preview claiming to be an answer always carries one.
+    """
+    import random
+
+    random.seed(20260915)
+    for _ in range(1500):
+        calc = Calculator()
+        sequence = [random.choice(_FUZZ_KEYS) for _ in range(random.randint(1, 25))]
+        for key in sequence:
+            try:
+                press(calc, key)
+            except Exception as exc:  # pragma: no cover - the failure path
+                raise AssertionError(f"{type(exc).__name__} on {sequence}: {exc}") from exc
+            assert isinstance(calc.display, str)
+            assert isinstance(calc.expression_text, str)
+            preview = calc.preview()
+            if preview.state == PreviewState.OK:
+                assert preview.value is not None
+                assert preview.text
+
+
+def test_memory_operations_survive_random_input():
+    import random
+
+    random.seed(4242)
+    keys = _FUZZ_KEYS + ["MS", "MR", "M+", "M-", "MC"]
+
+    def press_memory(calc, key):
+        if key == "MS":
+            calc.memory_store()
+        elif key == "MR":
+            calc.memory_recall()
+        elif key == "M+":
+            calc.memory_add()
+        elif key == "M-":
+            calc.memory_subtract()
+        elif key == "MC":
+            calc.memory_clear()
+        else:
+            press(calc, key)
+
+    for _ in range(600):
+        calc = Calculator()
+        for key in [random.choice(keys) for _ in range(random.randint(1, 20))]:
+            press_memory(calc, key)
+        assert calc.memory is None or isinstance(calc.memory, float)
