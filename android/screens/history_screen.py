@@ -14,6 +14,8 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 
+from logic import load_history_result
+
 
 class HistoryScreen(Screen):
     rows_data = ListProperty([])
@@ -68,11 +70,13 @@ class HistoryScreen(Screen):
         entries = app.history.entries
         if not (0 <= index < len(entries)):
             return
-        result = entries[index]["result"]
         calculator_screen = app.screen_manager.get_screen("calculator")
-        calculator_screen.calc.display = result
-        calculator_screen.calc.start_fresh = True
-        calculator_screen._refresh()
+        if not load_history_result(calculator_screen.calc, entries[index]["result"]):
+            # A stored "Error" row has no value to reuse; leave the
+            # calculator untouched rather than wiping what is on screen.
+            self.status_text = "That entry has no result to reuse."
+            return
+        calculator_screen._refresh(animate=False)
         app.screen_manager.current = "calculator"
 
     def delete_entry(self, index: int):

@@ -17,6 +17,7 @@ from android.logic import (
     animations_enabled,
     entry_animation,
     haptics_enabled,
+    load_history_result,
     memory_controls_enabled,
     parenthesis_label,
     press_animation,
@@ -405,3 +406,28 @@ def test_haptics_never_raise_when_unavailable():
     for _ in range(5):
         assert haptics_module.tap() is False
     haptics_module.reset()
+
+
+# ---------------------------------------------------------------------------
+# History reuse
+# ---------------------------------------------------------------------------
+def test_reusing_a_history_result_loads_it_into_the_calculator():
+    calc = Calculator()
+    calc.input_digit("9")
+    assert load_history_result(calc, "42") is True
+    assert calc.display == "42"
+
+
+def test_reusing_a_negative_result_handles_the_typographic_minus():
+    calc = Calculator()
+    assert load_history_result(calc, "−5") is True
+    assert calc.display == "−5"
+
+
+def test_reusing_a_non_numeric_row_leaves_the_calculator_alone():
+    """A stored "Error" row (or a hand-edited file) must not wipe the screen."""
+    calc = Calculator()
+    for digit in "123":
+        calc.input_digit(digit)
+    assert load_history_result(calc, "Error") is False
+    assert calc.display == "123"

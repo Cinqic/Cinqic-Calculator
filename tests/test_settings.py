@@ -1,3 +1,4 @@
+import json
 import os
 
 from cinqic_calculator.settings import DEFAULT_SETTINGS, Settings
@@ -72,3 +73,62 @@ def test_memory_value_round_trips(tmp_path):
 
     reloaded = Settings(path)
     assert reloaded.get("memory_value") == 42.0
+
+
+# ---------------------------------------------------------------------------
+# Upgrading from an earlier version's settings file
+# ---------------------------------------------------------------------------
+def test_settings_file_from_1_0_1_gains_the_new_defaults(tmp_path):
+    """An existing install must keep its choices and pick up new keys."""
+    path = tmp_path / "settings.json"
+    path.write_text(
+        json.dumps(
+            {
+                "theme": "light",
+                "save_history": False,
+                "degree_mode": False,
+                "persist_memory": True,
+                "memory_value": 12.5,
+                "window_width": 900,
+                "window_height": 600,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings = Settings(str(path))
+
+    # Existing preferences survive.
+    assert settings.get("theme") == "light"
+    assert settings.get("save_history") is False
+    assert settings.get("degree_mode") is False
+    assert settings.get("persist_memory") is True
+    assert settings.get("memory_value") == 12.5
+
+    # New 1.1.0 keys arrive at their defaults: animations on, haptics on.
+    assert settings.get("reduced_motion") is False
+    assert settings.get("haptics") is True
+
+
+def test_unknown_keys_from_a_future_version_are_dropped_safely(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"theme": "dark", "some_future_option": {"nested": True}}), encoding="utf-8")
+    settings = Settings(str(path))
+    assert settings.get("theme") == "dark"
+    assert settings.get("some_future_option") is None
+
+
+def test_a_corrupt_settings_file_falls_back_to_defaults(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text("{not json at all", encoding="utf-8")
+    settings = Settings(str(path))
+    assert settings.get("theme") == "dark"
+    assert settings.get("haptics") is True
+
+
+def test_wrongly_typed_values_are_rejected_in_favour_of_defaults(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"reduced_motion": "yes please", "save_history": 7}), encoding="utf-8")
+    settings = Settings(str(path))
+    assert settings.get("reduced_motion") is False
+    assert settings.get("save_history") is True

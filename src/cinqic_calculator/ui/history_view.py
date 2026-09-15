@@ -34,6 +34,10 @@ class HistoryView(tk.Frame):
         self.tree.column("result", width=100)
         self.tree.column("timestamp", width=140)
         self.tree.pack(fill="both", expand=True, padx=16, pady=(0, 8))
+        # Double-clicking a calculation is the obvious way to pick it back
+        # up; the Reuse button stays for keyboard and discoverability.
+        self.tree.bind("<Double-Button-1>", lambda _event: self._reuse_selected())
+        self.tree.bind("<Return>", lambda _event: self._reuse_selected())
 
         actions = tk.Frame(self, bg=c["background"])
         actions.pack(fill="x", padx=16, pady=(0, 16))
@@ -48,8 +52,15 @@ class HistoryView(tk.Frame):
         )
 
     def refresh(self):
+        """Redraw the list, newest first.
+
+        The row id stays the entry's real index in ``history.entries`` so
+        reuse/copy/delete keep addressing the right entry regardless of the
+        order rows are displayed in.
+        """
         self.tree.delete(*self.tree.get_children())
-        for index, entry in enumerate(self.history.entries):
+        for index in reversed(range(len(self.history.entries))):
+            entry = self.history.entries[index]
             values = (entry["expression"], entry["result"], entry["timestamp"])
             self.tree.insert("", "end", iid=str(index), values=values)
 

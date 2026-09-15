@@ -34,6 +34,7 @@ __all__ = [
     "persist_memory_value",
     "set_persist_memory",
     "record_history_entry",
+    "load_history_result",
     "ScreenInputRouter",
 ]
 
@@ -112,6 +113,22 @@ def record_history_entry(history: History, expression: str, result: str, timesta
     if timestamp is None:
         timestamp = _datetime.datetime.now().isoformat(timespec="seconds")
     history.add(expression, result, timestamp)
+
+
+def load_history_result(calculator, result_text: str) -> bool:
+    """Load a stored history result back into the calculator.
+
+    Returns False (leaving the calculator untouched) when the stored result
+    is not a number -- a recorded "Error" row, or a file edited by hand.
+    History rows are read back off disk, so this must not assume they are
+    well-formed.
+    """
+    try:
+        value = float(str(result_text).replace("\u2212", "-"))
+    except (TypeError, ValueError):
+        return False
+    calculator.load_value(value)
+    return True
 
 
 class ScreenInputRouter:

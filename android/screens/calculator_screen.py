@@ -77,7 +77,7 @@ class CalculatorScreen(Screen):
     reduced_motion = BooleanProperty(False)
     background_color = ListProperty([0, 0, 0, 1])
     clear_label = StringProperty("AC")
-    parenthesis_label = StringProperty("(")
+    paren_key_label = StringProperty("(")
     active_operator = StringProperty("")
     display_font_size = NumericProperty(46)
     entry_offset = NumericProperty(0)
@@ -300,7 +300,7 @@ class CalculatorScreen(Screen):
         self.memory_indicator_text = "M" if calc.has_memory else ""
         self.memory_controls_enabled_prop = memory_controls_enabled(calc)
         self.clear_label = calc.clear_label
-        self.parenthesis_label = parenthesis_label(calc.model.open_parens, _ends_operand(calc))
+        self.paren_key_label = parenthesis_label(calc.model.open_parens, _ends_operand(calc))
         self.active_operator = _active_operator(calc)
 
         sheet = self.ids.get("scientific_sheet")

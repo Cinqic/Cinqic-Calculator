@@ -259,7 +259,7 @@ class ScientificSheet(BoxLayout):
 
     def on_touch_down(self, touch):
         handle = self.ids.get("drag_handle")
-        if handle is not None and handle.collide_point(*handle.to_widget(*touch.pos)):
+        if handle is not None and handle.collide_point(*touch.pos):
             self.dragging = True
             touch.grab(self)
             return True
