@@ -8,9 +8,9 @@ A private, offline-first calculator for Windows, Linux, and Android.
 
 *The desktop interface: the full expression, the value being typed, and the answer it would produce — before `=` is pressed.*
 
-<img src="assets/screenshots/android-calculator.png" alt="The Android calculator screen showing 125 x 24 with a live result of 3000" width="300"> <img src="assets/screenshots/android-scientific.png" alt="The Android scientific sheet slid up over the keypad, with trigonometry, powers, logarithm and memory groups" width="300">
+<img src="assets/screenshots/android-calculator.png" alt="The Android calculator showing the expression 125 x 24, the value 24 being typed, and a live result of 3000" width="300"> <img src="assets/screenshots/android-scientific.png" alt="The Android scientific sheet slid up over the keypad, grouped into trigonometry, powers and roots, logs and constants, and memory" width="300">
 
-*The redesigned Android interface, and the scientific sheet that slides up over the keypad — the second captured from a real Android emulator in CI.*
+*The Android interface and the scientific sheet. Both captured from a real Android emulator in CI, driven by actual taps.*
 
 Standard and scientific calculations with a live answer preview, unit
 conversion, practical financial tools, and optional local history — without an
