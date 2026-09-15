@@ -21,6 +21,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 
+from widgets_palette import DISABLED_ALPHA as _DISABLED_ALPHA
+from widgets_palette import KIND_COLORS_HEX, hex_to_rgba
+
 __all__ = ["CalcButton", "ScientificSheet", "KIND_COLORS", "SCIENTIFIC_GROUPS", "SYMBOL_FONT", "symbol_or_text"]
 
 
@@ -69,18 +72,11 @@ SCIENTIFIC_GROUPS = [
 ]
 
 
-# Background / text colours per key kind, as RGBA. Kept here next to the
-# widget that uses them so a theme change is one edit.
-KIND_COLORS = {
-    "number": ((0.13, 0.13, 0.13, 1), (1, 1, 1, 1)),
-    "function": ((0.09, 0.09, 0.09, 1), (0.78, 0.78, 0.78, 1)),
-    "operator": ((0.11, 0.17, 0.11, 1), (0.36, 0.83, 0.36, 1)),
-    "equals": ((0.20, 0.80, 0.20, 1), (0.02, 0.02, 0.02, 1)),
-    "accent": ((0.11, 0.17, 0.11, 1), (0.36, 0.83, 0.36, 1)),
-}
+#: kind -> (background rgba, foreground rgba), derived from the plain-hex
+#: palette in widgets_palette.py so the colours stay checkable without Kivy.
+KIND_COLORS = {kind: (hex_to_rgba(background), hex_to_rgba(foreground)) for kind, (background, foreground) in KIND_COLORS_HEX.items()}
 
 _PRESSED_LIFT = 0.10
-_DISABLED_ALPHA = 0.35
 
 
 class CalcButton(ButtonBehavior, Label):

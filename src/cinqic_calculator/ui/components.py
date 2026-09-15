@@ -3,6 +3,8 @@
 import tkinter as tk
 from tkinter import ttk
 
+from ..constants import readable_text_on
+
 FONT_FAMILY = "Segoe UI"
 
 
@@ -66,7 +68,7 @@ class ToolTip:
 def button_palette(colors: dict, kind: str):
     """Resolve (background, foreground, active background) for a button kind."""
     if kind == "equals":
-        return colors["accent"], "#000000", colors["accent_active"]
+        return colors["accent"], readable_text_on(colors["accent"]), colors["accent_active"]
     if kind == "operator":
         return colors["panel_alt"], colors["accent"], colors["border"]
     if kind == "function":
@@ -130,7 +132,7 @@ def set_button_active(button, active: bool, colors: dict, kind: str | None = Non
     background, foreground, _ = button_palette(colors, kind)
     button._cinqic_active = bool(active)
     if active:
-        button.config(bg=colors["accent"], fg="#000000", relief="sunken")
+        button.config(bg=colors["accent"], fg=readable_text_on(colors["accent"]), relief="sunken")
     else:
         button.config(bg=background, fg=foreground, relief="flat")
 

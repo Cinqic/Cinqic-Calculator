@@ -49,13 +49,17 @@ COLOR_ACCENT_ACTIVE = "#28A428"
 COLOR_BORDER = "#2A2A2A"
 COLOR_ERROR = "#FF6B6B"
 
+# The light accent is darker than the dark theme's so that accent-coloured
+# TEXT (the live answer preview, operator glyphs, the memory indicator) clears
+# WCAG AA against the light panels. The previous #219A21 managed only 3.1:1 on
+# the keypad. See tests/test_accessibility.py, which enforces this.
 LIGHT_COLOR_BACKGROUND = "#F5F5F5"
 LIGHT_COLOR_PANEL = "#FFFFFF"
 LIGHT_COLOR_PANEL_ALT = "#ECECEC"
 LIGHT_COLOR_TEXT_PRIMARY = "#111111"
 LIGHT_COLOR_TEXT_SECONDARY = "#5A5A5A"
-LIGHT_COLOR_ACCENT = "#219A21"
-LIGHT_COLOR_ACCENT_ACTIVE = "#1B7E1B"
+LIGHT_COLOR_ACCENT = "#177317"
+LIGHT_COLOR_ACCENT_ACTIVE = "#0F5410"
 LIGHT_COLOR_BORDER = "#D6D6D6"
 LIGHT_COLOR_ERROR = "#C62828"
 
@@ -147,3 +151,29 @@ def get_colors(theme_name: str) -> dict:
         "border": COLOR_BORDER,
         "error": COLOR_ERROR,
     }
+
+
+def relative_luminance(hex_color: str) -> float:
+    """WCAG relative luminance of an ``#rrggbb`` colour."""
+    hex_color = hex_color.lstrip("#")
+    channels = []
+    for index in (0, 2, 4):
+        value = int(hex_color[index : index + 2], 16) / 255
+        channels.append(value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def contrast_ratio(first: str, second: str) -> float:
+    """WCAG contrast ratio between two ``#rrggbb`` colours (1.0 to 21.0)."""
+    lighter, darker = sorted((relative_luminance(first), relative_luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def readable_text_on(background: str) -> str:
+    """Pick black or white text for ``background``, whichever reads better.
+
+    Used instead of hardcoding black on the accent: the light and dark
+    themes' accents differ enough that one fixed choice fails on one of them,
+    and this keeps working if the palette is ever retuned.
+    """
+    return "#000000" if contrast_ratio("#000000", background) >= contrast_ratio("#FFFFFF", background) else "#FFFFFF"

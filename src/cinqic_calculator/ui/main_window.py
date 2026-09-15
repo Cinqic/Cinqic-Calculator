@@ -129,7 +129,12 @@ class MainWindow(tk.Tk):
         if name == "History":
             self.views["History"].refresh()
         for nav_name, button in self.nav_buttons.items():
-            button.config(bg=self.colors["accent"] if nav_name == name else self.colors["panel"])
+            selected = nav_name == name
+            background = self.colors["accent"] if selected else self.colors["panel"]
+            button.config(
+                bg=background,
+                fg=constants.readable_text_on(background) if selected else self.colors["text_primary"],
+            )
         self.set_status(f"{name} view")
 
     def set_status(self, text: str):

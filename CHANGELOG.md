@@ -95,6 +95,11 @@ versioned independently.
 - Spoken labels for keys whose face is a symbol.
 - Keypad touch targets sized for comfortable use on a phone.
 - No state is conveyed by colour alone.
+- Every text colour in both themes now meets WCAG AA contrast. The light
+  theme's accent — used for the live answer, the operator keys, and the
+  memory indicator — previously sat at 3.1:1 against the keypad, below the
+  readable threshold. Label colour on the accent fill is now chosen by
+  measured contrast rather than hardcoded, and a test enforces both.
 
 ### Licensing
 
