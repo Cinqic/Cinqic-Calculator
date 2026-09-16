@@ -46,9 +46,27 @@ jobs:
             src\cinqic_calculator\__main__.py
 
       - name: Smoke-test the packaged executable
+        # Start-Process -Wait, not the call operator: PyInstaller's
+        # --windowed build is a GUI-subsystem executable, and PowerShell does
+        # not wait for those, so $LASTEXITCODE is not its exit code. The
+        # binary ran fine; the check was reading the wrong value.
         run: |
-          & "dist\CinqicCalculator\CinqicCalculator.exe" --version
-          if ($LASTEXITCODE -ne 0) { throw "Packaged executable failed to run" }
+          $out = Join-Path $env:RUNNER_TEMP "packaged-version.txt"
+          $proc = Start-Process -FilePath "dist\CinqicCalculator\CinqicCalculator.exe" `
+            -ArgumentList "--version" -Wait -PassThru -NoNewWindow -RedirectStandardOutput $out
+          if ($proc.ExitCode -ne 0) {
+            throw "Packaged executable exited with $($proc.ExitCode)"
+          }
+          $reported = ""
+          if (Test-Path $out) { $reported = (Get-Content $out -Raw).Trim() }
+          Write-Host "Packaged build reports: '$reported'"
+          $expected = "Cinqic Calculator $(python -c ""from cinqic_calculator.constants import APP_VERSION; print(APP_VERSION)"")"
+          # A --windowed build can leave sys.stdout as None, in which case
+          # print() is a no-op and nothing is captured. Exit code is the
+          # reliable signal; the version is asserted when it is available.
+          if ($reported -and $reported -ne $expected) {
+            throw "Packaged executable reported '$reported', expected '$expected'"
+          }
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
