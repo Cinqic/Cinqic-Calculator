@@ -3,6 +3,8 @@
 import tkinter as tk
 from tkinter import ttk
 
+from ..constants import readable_text_on
+
 FONT_FAMILY = "Segoe UI"
 
 
@@ -14,13 +16,25 @@ class ToolTip:
         self.text = text
         self.colors = colors
         self.tip_window = None
-        widget.bind("<Enter>", self._schedule)
-        widget.bind("<Leave>", self._hide)
+        self._after_id = None
+        widget.bind("<Enter>", self._schedule, add="+")
+        widget.bind("<Leave>", self._hide, add="+")
+        widget.bind("<Destroy>", self._hide, add="+")
 
     def _schedule(self, _event=None):
-        self.widget.after(500, self._show)
+        self._cancel()
+        self._after_id = self.widget.after(500, self._show)
+
+    def _cancel(self):
+        if self._after_id is not None:
+            try:
+                self.widget.after_cancel(self._after_id)
+            except tk.TclError:
+                pass
+            self._after_id = None
 
     def _show(self):
+        self._after_id = None
         if self.tip_window or not self.widget.winfo_exists():
             return
         x = self.widget.winfo_rootx() + 10
@@ -42,29 +56,46 @@ class ToolTip:
         label.pack()
 
     def _hide(self, _event=None):
+        self._cancel()
         if self.tip_window is not None:
-            self.tip_window.destroy()
+            try:
+                self.tip_window.destroy()
+            except tk.TclError:
+                pass
             self.tip_window = None
 
 
-def make_button(parent, text, command, colors, kind="number", width=6, height=2, font_size=14):
-    """Create a flat, themed tk.Button with visible keyboard focus."""
+def button_palette(colors: dict, kind: str):
+    """Resolve (background, foreground, active background) for a button kind."""
+    if kind == "equals":
+        return colors["accent"], readable_text_on(colors["accent"]), colors["accent_active"]
     if kind == "operator":
-        bg, fg, active_bg = colors["accent"], "#000000", colors["accent_active"]
-    elif kind == "function":
-        bg, fg, active_bg = colors["panel_alt"], colors["text_primary"], colors["border"]
-    else:
-        bg, fg, active_bg = colors["panel"], colors["text_primary"], colors["panel_alt"]
+        return colors["panel_alt"], colors["accent"], colors["border"]
+    if kind == "function":
+        return colors["panel_alt"], colors["text_primary"], colors["border"]
+    return colors["panel"], colors["text_primary"], colors["panel_alt"]
+
+
+def make_button(parent, text, command, colors, kind="number", width=6, height=2, font_size=14):
+    """Create a flat, themed tk.Button with hover and visible keyboard focus.
+
+    Desktop feedback is deliberately colour-based rather than an imitation of
+    the Android keypad's spring animation: Tkinter has no compositor-backed
+    transform, so "scaling" a button means resizing the widget, which reflows
+    the whole grid. A crisp hover/press colour change reads as responsive
+    without ever moving the layout.
+    """
+    background, foreground, active_background = button_palette(colors, kind)
 
     button = tk.Button(
         parent,
         text=text,
         command=command,
         font=(FONT_FAMILY, font_size),
-        bg=bg,
-        fg=fg,
-        activebackground=active_bg,
-        activeforeground=fg,
+        bg=background,
+        fg=foreground,
+        activebackground=active_background,
+        activeforeground=foreground,
         bd=0,
         relief="flat",
         highlightthickness=2,
@@ -75,7 +106,35 @@ def make_button(parent, text, command, colors, kind="number", width=6, height=2,
         cursor="hand2",
         takefocus=True,
     )
+    button._cinqic_kind = kind
+    button._cinqic_active = False
+
+    def on_enter(_event):
+        if button["state"] != "disabled" and not button._cinqic_active:
+            button.config(bg=active_background)
+
+    def on_leave(_event):
+        if not button._cinqic_active:
+            button.config(bg=background)
+
+    button.bind("<Enter>", on_enter, add="+")
+    button.bind("<Leave>", on_leave, add="+")
     return button
+
+
+def set_button_active(button, active: bool, colors: dict, kind: str | None = None):
+    """Mark a button as the currently-selected one (e.g. the pending operator).
+
+    The state is shown with a filled background *and* a sunken relief, so it
+    is not conveyed by colour alone.
+    """
+    kind = kind or getattr(button, "_cinqic_kind", "function")
+    background, foreground, _ = button_palette(colors, kind)
+    button._cinqic_active = bool(active)
+    if active:
+        button.config(bg=colors["accent"], fg=readable_text_on(colors["accent"]), relief="sunken")
+    else:
+        button.config(bg=background, fg=foreground, relief="flat")
 
 
 def section_label(parent, text, colors, size=11):

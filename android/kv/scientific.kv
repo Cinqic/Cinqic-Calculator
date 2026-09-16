@@ -1,0 +1,50 @@
+#:kivy 2.2.0
+#:import dp kivy.metrics.dp
+#:import sp kivy.metrics.sp
+
+<ScientificSheet>:
+    orientation: "vertical"
+    padding: dp(12), dp(6), dp(12), dp(12)
+    spacing: dp(4)
+    canvas.before:
+        Color:
+            rgba: 0.055, 0.055, 0.055, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(22), dp(22), 0, 0]
+        Color:
+            rgba: 0.16, 0.16, 0.16, 1
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, dp(22))
+            width: 1
+
+    # Drag handle: a visual affordance and an optional gesture -- never the
+    # only route in or out of the sheet.
+    RelativeLayout:
+        id: drag_handle
+        size_hint_y: None
+        height: dp(22)
+        canvas:
+            Color:
+                rgba: 0.35, 0.35, 0.35, 1
+            RoundedRectangle:
+                pos: self.width / 2 - dp(22), dp(8)
+                size: dp(44), dp(4)
+                radius: [dp(2)]
+
+    # Filled from SCIENTIFIC_GROUPS in widgets.py so the key list lives in
+    # exactly one place.
+    BoxLayout:
+        id: groups
+        orientation: "vertical"
+        spacing: dp(6)
+
+    CalcButton:
+        text: "Done"
+        kind: "accent"
+        font_size: sp(16)
+        size_hint_y: None
+        height: dp(44)
+        reduced_motion: root.screen.reduced_motion if root.screen else False
+        on_release: root.screen.close_scientific() if root.screen else None

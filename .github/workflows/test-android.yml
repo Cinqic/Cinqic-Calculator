@@ -20,13 +20,18 @@ on:
       - "src/cinqic_calculator/**"
   workflow_dispatch:
 
+# Only one run per branch/PR: pushing again supersedes the previous run
+# rather than leaving two multi-minute Android builds racing each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-glue-tests:
     # The pure-Python android/logic.py glue and its tests need no Kivy or
-    # Android tooling at all -- run them on the same platform/version as
-    # the main desktop test job for a fast, cheap signal before the much
-    # slower buildozer build below.
-    runs-on: windows-latest
+    # Android tooling at all -- a fast, cheap signal before the much slower
+    # buildozer build below.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +40,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Tk and a virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-tk tk xvfb
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -42,10 +52,10 @@ jobs:
           pip install -r requirements-build.txt
 
       - name: Lint
-        run: ruff check src tests android
+        run: ruff check src tests android scripts
 
       - name: Run full suite (desktop + android glue)
-        run: python -m pytest tests/ -v
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" python -m pytest tests/ -v
 
   build-debug-apk:
     needs: android-glue-tests
@@ -132,7 +142,7 @@ jobs:
     # arm64-v8a/armeabi-v7a APK (the real build-debug-apk artifact, which
     # matches an actual phone) would need slow, timeout-prone software
     # ARM translation here. This job's APK is for CI verification only
-    # and is never uploaded anywhere Blessom would download it from.
+    # and is never published anywhere a user would download it from.
     needs: android-glue-tests
     runs-on: ubuntu-latest
     steps:
@@ -240,43 +250,136 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           APK="$1"
+          PKG=com.cinqic.calculator
+          ACTIVITY=$PKG/org.kivy.android.PythonActivity
+
+          # Key centres on the pixel_5 profile this job pins (1080x2340).
+          # Used only for the screenshot/interaction steps; the crash and
+          # permission checks below do not depend on them.
+          MULTIPLY_X=928; MULTIPLY_Y=1220
+          PLUS_X=928;     PLUS_Y=1769
+          EQUALS_X=928;   EQUALS_Y=2047
+          FX_X=950;       FX_Y=205
+
+          fail_on_crash() {
+            local logfile="$1"
+            if grep -q "FATAL EXCEPTION" "$logfile" || grep -q "Python for android ended." "$logfile"; then
+              echo "Crash detected in $logfile" >&2
+              grep -B5 -A30 "FATAL EXCEPTION\|Traceback" "$logfile" >&2 || true
+              exit 1
+            fi
+          }
 
           echo "--- adb install ---"
           adb install -r "$APK"
 
           echo "--- package appears in pm list ---"
-          adb shell pm list packages | grep com.cinqic.calculator
+          adb shell pm list packages | grep "$PKG"
 
-          echo "--- launch main activity ---"
-          adb logcat -c
-          adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
-          sleep 15
-
-          echo "--- confirm the app process is actually running (no immediate crash) ---"
-          adb shell pidof com.cinqic.calculator
-
-          echo "--- logcat: fail if this process logged a FATAL EXCEPTION / AndroidRuntime crash ---"
-          adb logcat -d | tee /tmp/logcat.txt
-          if grep -q "FATAL EXCEPTION" /tmp/logcat.txt || (grep -A5 "AndroidRuntime" /tmp/logcat.txt | grep -q "com.cinqic.calculator"); then
-            echo "Crash detected in logcat" >&2
+          echo "--- permissions: the app must request none ---"
+          # The zero-permission guarantee is a headline privacy claim, so
+          # assert it against the installed package, not just the manifest.
+          granted=$(adb shell dumpsys package "$PKG" | sed -n '/requested permissions:/,/^ *$/p' | grep -v "requested permissions:" | tr -d ' \r' | grep -v '^$' || true)
+          if [ -n "$granted" ]; then
+            echo "Unexpected permissions requested by $PKG:" >&2
+            echo "$granted" >&2
             exit 1
           fi
+          echo "confirmed: no permissions requested"
 
-          echo "--- force-stop and relaunch, to confirm the app restarts cleanly ---"
-          adb shell am force-stop com.cinqic.calculator
+          echo "--- cold launch ---"
+          adb logcat -c
+          adb shell am start -n "$ACTIVITY"
+          sleep 20
+          adb shell pidof "$PKG"
+          adb logcat -d > /tmp/logcat-launch.txt
+          fail_on_crash /tmp/logcat-launch.txt
+
+          echo "--- drive real input through the hardware-key path ---"
+          # A mix of typed text, hardware key events, and real taps on the
+          # on-screen keys -- together these exercise entry, the live
+          # preview, equals, repeated equals, backspace and rapid input
+          # through both paths the app accepts.
+          adb logcat -c
+          # 125 x 24 -- stop short of "=" so the live preview is on screen.
+          #
+          # Digits go through `input text`, but the operator is a real TAP on
+          # the on-screen key. Neither keyboard route works for "x":
+          # KEYCODE_STAR produces no text-input event at all, and `input text`
+          # sends "*" as an unshifted "8". Tapping is also the better test --
+          # it exercises the touch path a user actually takes, through
+          # CalcButton, rather than the hardware-keyboard fallback.
+          echo "screen size: $(adb shell wm size)"
+          adb shell input text "125"
+          sleep 1
+          adb shell input tap $MULTIPLY_X $MULTIPLY_Y
+          sleep 1
+          adb shell input text "24"
+          sleep 2
+
+          # Capture the live preview from the real device. This is the
+          # flagship feature, so the evidence for it should be a genuine
+          # emulator screenshot rather than a desktop rendering.
+          adb exec-out screencap -p > /tmp/emulator-live-preview.png || true
+
+          adb shell input tap $EQUALS_X $EQUALS_Y
+          sleep 2
+          adb exec-out screencap -p > /tmp/emulator-result.png || true
+          # Backspace stays a key event, which does exercise the app's
+          # hardware-key path (it is handled by key code, not codepoint).
+          # The operator and equals are taps, for the reason above.
+          adb shell input keyevent KEYCODE_DEL
+          adb shell input text "7"
+          adb shell input tap $PLUS_X $PLUS_Y
+          adb shell input text "3"
+          adb shell input tap $EQUALS_X $EQUALS_Y
+          sleep 1
+          # Press equals a second time: 7 + 3 = 10, then = 13.
+          adb shell input tap $EQUALS_X $EQUALS_Y
+          sleep 2
+          adb exec-out screencap -p > /tmp/emulator-repeated-equals.png || true
+          # rapid entry: must not drop input or wedge the UI thread
+          adb shell input text "1234567890"
+          sleep 2
+          adb shell input keyevent KEYCODE_ESCAPE
+          sleep 1
+
+          echo "--- still alive after all that input ---"
+          adb shell pidof "$PKG"
+          adb logcat -d > /tmp/logcat-input.txt
+          fail_on_crash /tmp/logcat-input.txt
+
+          echo "--- confirm the app is still the foreground activity ---"
+          adb shell dumpsys activity activities | grep -q "$PKG" || {
+            echo "App is no longer running an activity" >&2; exit 1; }
+
+          echo "--- capture the scientific sheet ---"
+          # Tap the "fx" key (top-right) to open the scientific sheet.
+          adb shell input tap $FX_X $FX_Y
+          sleep 2
+          adb exec-out screencap -p > /tmp/emulator-scientific.png || true
+          adb shell input keyevent KEYCODE_ESCAPE
+          sleep 1
+
+          echo "--- background and restore, to confirm no state corruption ---"
+          adb shell input keyevent KEYCODE_HOME
+          sleep 3
+          adb shell am start -n "$ACTIVITY"
+          sleep 10
+          adb shell pidof "$PKG"
+
+          echo "--- force-stop and relaunch, to confirm a clean restart ---"
+          adb shell am force-stop "$PKG"
           sleep 2
           adb logcat -c
-          adb shell am start -n com.cinqic.calculator/org.kivy.android.PythonActivity
-          sleep 15
-          adb shell pidof com.cinqic.calculator
-          adb logcat -d | tee /tmp/logcat-restart.txt
-          if grep -q "FATAL EXCEPTION" /tmp/logcat-restart.txt; then
-            echo "Crash detected on restart" >&2
-            exit 1
-          fi
+          adb shell am start -n "$ACTIVITY"
+          sleep 20
+          adb shell pidof "$PKG"
+          adb logcat -d > /tmp/logcat-restart.txt
+          fail_on_crash /tmp/logcat-restart.txt
 
           echo "--- uninstall cleanly ---"
-          adb uninstall com.cinqic.calculator
+          adb uninstall "$PKG"
 
           echo "All emulator checks passed."
           SCRIPT
@@ -291,3 +394,14 @@ jobs:
           profile: pixel_5
           disable-animations: true
           script: "\"$RUNNER_TEMP/emulator-verify.sh\" \"${{ steps.apk.outputs.path }}\""
+
+      - name: Upload emulator screenshot and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-evidence
+          path: |
+            /tmp/emulator-*.png
+            /tmp/logcat-*.txt
+          if-no-files-found: ignore
+          retention-days: 7

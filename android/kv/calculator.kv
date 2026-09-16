@@ -1,4 +1,12 @@
 #:kivy 2.2.0
+#:import dp kivy.metrics.dp
+#:import sp kivy.metrics.sp
+
+# Keypad geometry. 4 columns keeps every key comfortably above the 48dp
+# minimum touch target on a narrow phone, and lets "=" sit in the grid with
+# the other keys instead of in a detached row of its own.
+<CalcButton>:
+    font_size: sp(22)
 
 <CalculatorScreen>:
     canvas.before:
@@ -8,195 +16,231 @@
             pos: self.pos
             size: self.size
 
-    BoxLayout:
-        id: content_layout
-        orientation: "vertical"
-        padding: "10dp"
-        spacing: "8dp"
-
+    FloatLayout:
         BoxLayout:
-            size_hint_y: 0.18
+            id: content_layout
             orientation: "vertical"
-            Label:
-                text: root.memory_indicator_text
-                size_hint_y: 0.3
-                halign: "right"
-                valign: "middle"
-                text_size: self.size
-                color: 0.7, 0.9, 0.4, 1
-            Label:
-                id: display_label
-                text: root.display_text
-                font_size: "40sp"
-                halign: "right"
-                valign: "middle"
-                text_size: self.size
-                color: 1, 1, 1, 1
+            padding: dp(12)
+            spacing: dp(10)
+            size_hint: 1, 1
 
-        GridLayout:
-            cols: 5
-            size_hint_y: 0.12
-            spacing: "4dp"
-            Button:
-                text: "MC"
-                disabled: not root.memory_controls_enabled_prop
-                on_release: root.on_button("MC")
-            Button:
-                text: "MR"
-                disabled: not root.memory_controls_enabled_prop
-                on_release: root.on_button("MR")
-            Button:
-                text: "M+"
-                on_release: root.on_button("M+")
-            Button:
-                text: "M-"
-                on_release: root.on_button("M-")
-            Button:
-                text: "MS"
-                on_release: root.on_button("MS")
+            # -- Top row: mode + scientific -----------------------------
+            BoxLayout:
+                size_hint_y: None
+                height: dp(44)
+                spacing: dp(8)
 
-        GridLayout:
-            cols: 4
-            spacing: "4dp"
-            size_hint_y: 0.6
+                CalcButton:
+                    text: root.memory_indicator_text
+                    kind: "function"
+                    font_size: sp(14)
+                    size_hint_x: None
+                    width: dp(44)
+                    opacity: 1 if root.memory_indicator_text else 0
+                    disabled: not root.memory_indicator_text
+                    reduced_motion: root.reduced_motion
+                    on_release: root.open_scientific()
 
-            Button:
-                text: "C"
-                on_release: root.on_button("C")
-            Button:
-                text: "CE"
-                on_release: root.on_button("CE")
-            Button:
-                text: "%"
-                on_release: root.on_button("%")
-            Button:
-                text: "÷"
-                on_release: root.on_button("÷")
+                Widget:
 
-            Button:
-                text: "7"
-                on_release: root.on_button("7")
-            Button:
-                text: "8"
-                on_release: root.on_button("8")
-            Button:
-                text: "9"
-                on_release: root.on_button("9")
-            Button:
-                text: "×"
-                on_release: root.on_button("×")
-
-            Button:
-                text: "4"
-                on_release: root.on_button("4")
-            Button:
-                text: "5"
-                on_release: root.on_button("5")
-            Button:
-                text: "6"
-                on_release: root.on_button("6")
-            Button:
-                text: "-"
-                on_release: root.on_button("-")
-
-            Button:
-                text: "1"
-                on_release: root.on_button("1")
-            Button:
-                text: "2"
-                on_release: root.on_button("2")
-            Button:
-                text: "3"
-                on_release: root.on_button("3")
-            Button:
-                text: "+"
-                on_release: root.on_button("+")
-
-            Button:
-                text: "+/-"
-                on_release: root.on_button("+/-")
-            Button:
-                text: "0"
-                on_release: root.on_button("0")
-            Button:
-                text: "."
-                on_release: root.on_button(".")
-            Button:
-                text: "⌫"
-                on_release: root.on_button("⌫")
-
-        Button:
-            text: "="
-            size_hint_y: 0.13
-            background_color: 0.2, 0.7, 0.2, 1
-            on_release: root.on_button("=")
-
-        BoxLayout:
-            size_hint_y: 0.08
-            Button:
-                text: ("Hide Scientific" if root.scientific_visible else "Scientific")
-                on_release: root.toggle_scientific()
-
-        BoxLayout:
-            id: scientific_panel
-            orientation: "vertical"
-            size_hint_y: (0.32 if root.scientific_visible else 0)
-            opacity: 1 if root.scientific_visible else 0
-            disabled: not root.scientific_visible
-
-            GridLayout:
-                cols: 6
-                spacing: "3dp"
-                Button:
-                    text: "x²"
-                    on_release: root.on_scientific_button("x²")
-                Button:
-                    text: "x³"
-                    on_release: root.on_scientific_button("x³")
-                Button:
-                    text: "√x"
-                    on_release: root.on_scientific_button("√x")
-                Button:
-                    text: "∛x"
-                    on_release: root.on_scientific_button("∛x")
-                Button:
-                    text: "1/x"
-                    on_release: root.on_scientific_button("1/x")
-                Button:
-                    text: "x!"
-                    on_release: root.on_scientific_button("x!")
-
-            GridLayout:
-                cols: 6
-                spacing: "3dp"
-                Button:
-                    text: "|x|"
-                    on_release: root.on_scientific_button("|x|")
-                Button:
-                    text: "π"
-                    on_release: root.on_scientific_button("pi")
-                Button:
-                    text: "e"
-                    on_release: root.on_scientific_button("e")
-                Button:
-                    text: "ln"
-                    on_release: root.on_scientific_button("ln")
-                Button:
-                    text: "log"
-                    on_release: root.on_scientific_button("log")
-                Button:
-                    text: ("Deg" if root.degree_mode else "Rad")
+                CalcButton:
+                    text: "DEG" if root.degree_mode else "RAD"
+                    kind: "function"
+                    font_size: sp(14)
+                    size_hint_x: None
+                    width: dp(70)
+                    reduced_motion: root.reduced_motion
                     on_release: root.toggle_degree_mode()
 
+                CalcButton:
+                    text: "fx"
+                    kind: "accent"
+                    font_size: sp(18)
+                    size_hint_x: None
+                    width: dp(64)
+                    active: root.scientific_visible
+                    reduced_motion: root.reduced_motion
+                    on_release: root.toggle_scientific()
+
+            # -- Display card -------------------------------------------
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: dp(168)
+                padding: dp(14), dp(10)
+                spacing: dp(2)
+                canvas.before:
+                    Color:
+                        rgba: 0.086, 0.086, 0.086, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(18)]
+
+                Label:
+                    id: expression_label
+                    text: root.expression_text
+                    font_size: sp(16)
+                    size_hint_y: None
+                    height: dp(26)
+                    halign: "right"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "left"
+                    text_size: self.size
+                    color: 0.63, 0.63, 0.63, 1
+
+                Label:
+                    id: display_label
+                    text: root.display_text
+                    font_size: sp(root.display_font_size)
+                    halign: "right"
+                    valign: "middle"
+                    text_size: self.size
+                    color: 1, 1, 1, 1
+                    opacity: root.entry_opacity
+                    # Cosmetic only: the value is already committed before
+                    # this offset animates back to zero. Top padding shrinks
+                    # the text box from above, so animating it to 0 makes a
+                    # freshly entered value rise into place.
+                    padding: (0, root.entry_offset, 0, 0)
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(34)
+                    spacing: dp(8)
+
+                    Label:
+                        text: root.preview_text
+                        font_size: sp(18)
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        color: root.preview_color
+
+                    CalcButton:
+                        text: root.backspace_label
+                        kind: "function"
+                        # Roboto has no U+232B; the registered symbol font
+                        # does, and falls back to a "DEL" label if absent.
+                        font_name: root.symbol_font
+                        font_size: sp(20)
+                        size_hint_x: None
+                        width: dp(56)
+                        reduced_motion: root.reduced_motion
+                        on_release: root.on_button("⌫")
+
+            # -- Keypad --------------------------------------------------
             GridLayout:
-                cols: 3
-                spacing: "3dp"
-                Button:
-                    text: "sin"
-                    on_release: root.on_scientific_button("sin")
-                Button:
-                    text: "cos"
-                    on_release: root.on_scientific_button("cos")
-                Button:
-                    text: "tan"
-                    on_release: root.on_scientific_button("tan")
+                id: keypad
+                cols: 4
+                spacing: dp(9)
+
+                CalcButton:
+                    text: root.clear_label
+                    kind: "function"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("clear")
+                CalcButton:
+                    text: root.paren_key_label
+                    kind: "function"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("paren")
+                CalcButton:
+                    text: "%"
+                    kind: "function"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("%")
+                CalcButton:
+                    text: "÷"
+                    kind: "operator"
+                    active: root.active_operator == "/"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("÷")
+
+                CalcButton:
+                    text: "7"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("7")
+                CalcButton:
+                    text: "8"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("8")
+                CalcButton:
+                    text: "9"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("9")
+                CalcButton:
+                    text: "×"
+                    kind: "operator"
+                    active: root.active_operator == "*"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("×")
+
+                CalcButton:
+                    text: "4"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("4")
+                CalcButton:
+                    text: "5"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("5")
+                CalcButton:
+                    text: "6"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("6")
+                CalcButton:
+                    text: "−"
+                    kind: "operator"
+                    active: root.active_operator == "-"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("−")
+
+                CalcButton:
+                    text: "1"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("1")
+                CalcButton:
+                    text: "2"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("2")
+                CalcButton:
+                    text: "3"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("3")
+                CalcButton:
+                    text: "+"
+                    kind: "operator"
+                    active: root.active_operator == "+"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("+")
+
+                CalcButton:
+                    text: "±"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("±")
+                CalcButton:
+                    text: "0"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("0")
+                CalcButton:
+                    text: "."
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button(".")
+                CalcButton:
+                    text: "="
+                    kind: "equals"
+                    reduced_motion: root.reduced_motion
+                    on_release: root.on_button("=")
+
+        # -- Scientific sheet -------------------------------------------
+        # Slides up over the keypad rather than pushing the whole screen
+        # into an endless vertical grid. Always openable and closable by
+        # tap; the drag handle is an extra, never the only way.
+        ScientificSheet:
+            id: scientific_sheet
+            size_hint: 1, None
+            height: root.sheet_height
+            pos_hint: {"x": 0}
+            y: root.sheet_y
+            screen: root

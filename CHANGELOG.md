@@ -1,8 +1,125 @@
 # Changelog
 
 All notable changes to Cinqic Calculator are documented in this file.
-Windows and Android are versioned and released independently (Windows tags:
-`vX.Y.Z`; Android tags: `android-vX.Y.Z`).
+
+From 1.1.0 onwards, all platforms share one product version. Desktop releases
+(Windows and Linux) are tagged `vX.Y.Z` and ship together; Android is packaged
+separately and tagged `android-vX.Y.Z`. Before 1.1.0, Windows and Android were
+versioned independently.
+
+## 1.1.0
+
+### Changed behaviour worth knowing about
+
+- **Arithmetic now follows operator precedence.** `2 + 3 × 4` is `14`, where
+  earlier versions evaluated strictly left to right and answered `20`. This is
+  a consequence of showing the whole expression: once the display reads
+  `2 + 3 × 4`, answering `20` contradicts what you can see. Parentheses are
+  available for explicit grouping.
+
+### User experience
+
+- **Live answer preview.** The expression being built is shown in full, and
+  the result it would produce appears as you type, before `=` is pressed. An
+  unfinished expression stays quiet instead of flashing an error; genuine
+  mistakes (dividing by zero, a domain error, an overflow) are reported with a
+  short, readable message rather than Python exception text.
+- **The expression line now works.** It previously existed in the desktop
+  interface but was never populated.
+- **Repeated equals now works.** `2 + 3 =` gives `5`, and pressing `=` again
+  gives `8`, then `11`. This was documented from 1.0.0 onwards but never
+  implemented; the test covering it never pressed `=` twice.
+- **A clear key that says what it does** — it shows `CE` while an entry is
+  being edited and `AC` when it would clear the whole calculation.
+- **The pending operator is now visible** on both platforms, indicated by fill
+  and relief rather than by colour alone.
+- Long values stay readable: the display font shrinks as numbers grow.
+
+### Calculations
+
+- Added parentheses, `x^y`, `Ans`, `eˣ`, `10ˣ`, inverse trigonometry
+  (`sin⁻¹`, `cos⁻¹`, `tan⁻¹`), and hyperbolic functions.
+- `Ans` reuses the previous result and is kept separate from calculator
+  memory, which remains explicitly user-controlled.
+- Very large and very small results now use scientific notation instead of
+  being rounded into a different number. Previously `1e-15` was displayed as
+  `0`.
+- The expression evaluator no longer hangs on an enormous exponent such as
+  `9**9**9`, which previously allocated an unbounded integer — a denial of
+  service in a sandbox meant to bound untrusted input. It remains allowlist-only
+  with no `eval()` or `exec()` anywhere.
+
+### Android
+
+- Redesigned keypad: keys respond to a press with a short spring compression
+  and rebound, drawn as a canvas transform so a pressed key never disturbs its
+  neighbours. Newly entered digits animate into the display, with a slightly
+  stronger transition when `=` commits a result.
+- Animation is cosmetic only — calculator state updates immediately, and fast
+  input retargets in-flight animations rather than queueing stale motion.
+- The permanent memory row, the detached equals row, and the expanding
+  scientific block are gone. The keypad is now a single four-column grid with
+  `=` in it, backspace sits beside the display, and memory has moved into the
+  scientific surface.
+- Scientific mode is now a sheet that slides up over the keypad, with its
+  functions grouped by purpose. Everything in it is reachable by tap; the drag
+  handle is an addition, never the only way in or out.
+- A combined `( )` key inserts whichever bracket fits the expression.
+- Optional haptic feedback, using Android's built-in key-press feedback, which
+  requires **no** additional permission. The app still requests no permissions
+  at all.
+
+### Windows
+
+- The packaged executable is now smoke-tested during the release build.
+- `--version` and `--help` options, so a packaged build can be checked without
+  a display.
+
+### Linux
+
+- **Linux is now a supported platform.** Released as a self-contained
+  `Cinqic-Calculator-Linux-x86_64.tar.gz` bundle that includes Python and Tk,
+  with a launcher and a desktop entry.
+- Settings and history follow the XDG Base Directory specification
+  (`$XDG_DATA_HOME/Cinqic/Calculator`) rather than a bare folder in `$HOME`.
+- Light/dark detection for the "system" theme now works on Linux desktops, not
+  only on Windows.
+- Continuous integration runs the full suite, lint, and the real Tkinter GUI
+  smoke tests under Xvfb on Linux, and verifies the released tarball runs from
+  a clean extraction.
+
+### Accessibility
+
+- A reduced-motion setting that removes bouncing and movement while keeping
+  immediate feedback on every press. Animations remain on by default.
+- Spoken labels for keys whose face is a symbol.
+- Keypad touch targets sized for comfortable use on a phone.
+- No state is conveyed by colour alone.
+- Every text colour in both themes now meets WCAG AA contrast. The light
+  theme's accent — used for the live answer, the operator keys, and the
+  memory indicator — previously sat at 3.1:1 against the keypad, below the
+  readable threshold. Label colour on the accent fill is now chosen by
+  measured contrast rather than hardcoded, and a test enforces both.
+
+### Licensing
+
+- Cinqic Calculator is now licensed under the **Apache License 2.0**, replacing
+  MIT. A `NOTICE` file and a `THIRD_PARTY_NOTICES.md` inventory have been
+  added. Third-party components retain their own licences.
+
+### Developer and release infrastructure
+
+- Windows and Linux desktop artifacts are now built, verified, and published
+  from a single tag, so both always represent the same version, with one
+  combined `SHA256SUMS.txt` covering every asset.
+- Continuous integration runs tests and lint on both Windows and Linux, and
+  fails if the GUI smoke tests silently skip for want of a display.
+- The Android emulator check now drives real input through the app — entry,
+  the live preview, equals, repeated equals, backspace and rapid typing — and
+  asserts the installed package requests no permissions, instead of only
+  confirming that it launches.
+- A test suite guards version and licence coherence across the seven places
+  they are declared.
 
 ## Android 1.0.0
 

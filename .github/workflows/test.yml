@@ -5,9 +5,24 @@ on:
   push:
     branches: [main]
 
+# Only one run per branch/PR: pushing again supersedes the previous run
+# rather than leaving two multi-minute Android builds racing each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: windows-latest
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+          - os: ubuntu-latest
+            name: Linux
     steps:
       - uses: actions/checkout@v4
 
@@ -16,14 +31,51 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Tk and a virtual display (Linux)
+        # The GUI smoke tests skip themselves when no display is available,
+        # which would quietly turn this job into "imports only". Installing
+        # Tk and Xvfb is what makes the Linux job real evidence.
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-tk tk xvfb
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e .
           pip install -r requirements-build.txt
 
-      - name: Lint
-        run: ruff check src tests android
+      - name: Confirm tkinter is importable
+        # Fail loudly here rather than letting every GUI test skip.
+        run: python -c "import tkinter; print('tkinter', tkinter.TkVersion)"
 
-      - name: Run tests
+      - name: Lint
+        run: ruff check src tests android scripts
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
         run: python -m pytest tests/ -v
+
+      - name: Run tests under Xvfb (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" python -m pytest tests/ -v
+
+      - name: Assert the GUI tests actually ran
+        # A silent "10 skipped" would make this job meaningless as evidence
+        # that the desktop interface works on this platform.
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a --server-args="-screen 0 1280x1024x24" python -m pytest tests/test_ui_smoke.py -q > ui.log 2>&1
+          else
+            python -m pytest tests/test_ui_smoke.py -q > ui.log 2>&1
+          fi
+          cat ui.log
+          if grep -qE "[0-9]+ skipped" ui.log; then
+            echo "GUI smoke tests were skipped - no usable display." >&2
+            exit 1
+          fi
+
+      - name: Smoke-test the command-line entry point
+        run: python -m cinqic_calculator --version

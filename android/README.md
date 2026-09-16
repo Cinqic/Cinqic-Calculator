@@ -51,9 +51,13 @@ Build it on a Linux machine, in a Linux VM/container, or in CI.
 - [`.github/workflows/test-android.yml`](../.github/workflows/test-android.yml)
   runs the desktop+android glue test suite and `ruff`, then builds an
   **unsigned debug APK** on `ubuntu-latest` via Buildozer and inspects its
-  package ID/permissions with `scripts/inspect_android_apk.py`. Triggers
-  on PRs/pushes touching `android/**` or the shared core, plus manual
-  dispatch.
+  package ID/permissions with `scripts/inspect_android_apk.py`. It then
+  builds a separate x86_64-only APK, boots an emulator, installs it, and
+  drives real input through the app - entry, live preview, equals,
+  repeated equals, backspace, rapid typing, backgrounding and restart -
+  asserting the installed package requests no permissions and that nothing
+  crashes. Triggers on PRs/pushes touching `android/**` or the shared core,
+  plus manual dispatch.
 - [`.github/workflows/release-android.yml`](../.github/workflows/release-android.yml)
   builds, signs, zip-aligns, verifies, inspects, checksums, and publishes
   the **release APK** on an `android-v*` tag. It requires these repository
@@ -69,7 +73,11 @@ Build it on a Linux machine, in a Linux VM/container, or in CI.
   by CI or by an agent.
 - `android.permissions` in `buildozer.spec` is intentionally empty - the
   app is fully offline and only touches its own private Kivy
-  `user_data_dir`, which needs no permission.
+  `user_data_dir`, which needs no permission. The optional haptics in
+  `haptics.py` use `View.performHapticFeedback(VIRTUAL_KEY)`, Android's
+  built-in key-press feedback, which needs no permission either; the
+  `Vibrator`/`VibrationEffect` APIs (which would require `VIBRATE`) are
+  deliberately not used.
 
 ## Layout
 
@@ -79,6 +87,10 @@ android/
   android_constants.py    Android-only version string, privacy/Juniper copy
   logic.py                Pure-Python glue logic (no kivy import) - tested
                            directly by tests/test_android_glue.py
+  haptics.py              Optional, permission-free haptic feedback
+  widgets.py              CalcButton (the animated keypad key) and the
+                           scientific sheet, plus the single spec that
+                           defines the sheet's grouped contents
   screens/                One Screen subclass per app screen
   kv/                     One .kv layout file per screen
   buildozer.spec
@@ -97,3 +109,29 @@ imports work for local desktop iteration too (`python android/main.py`, on
 a machine with Kivy installed). Only `tests/test_android_glue.py`, which
 runs from the repository root under pytest, addresses this package via the
 dotted `android.logic` path.
+
+## Interface notes
+
+The keypad's feel is deliberately split in two:
+
+- **Decisions** (whether motion is enabled, press timings, which bracket a
+  combined `( )` key should insert, what the live-answer line should say)
+  live in `logic.py` as plain functions, so they are unit-tested by
+  `tests/test_android_glue.py` without Kivy or a device.
+- **Rendering** lives in `widgets.py` and the `.kv` files.
+
+`CalcButton` animates a canvas `Scale`, never the widget's `size`. Animating
+`size` would re-run the parent `GridLayout`'s layout every frame, so a pressed
+key would visibly nudge its neighbours; a canvas transform is purely visual and
+leaves the grid geometry untouched.
+
+Animation is cosmetic only. Every press updates calculator state immediately
+and synchronously before any animation starts, and in-flight animations are
+cancelled rather than queued, so fast typing retargets to the newest value
+instead of replaying stale motion.
+
+Superscript labels (`x²`, `sin⁻¹`, `eˣ`) use Kivy's `[sup]` markup rather than
+Unicode superscript codepoints, because the default Roboto font does not
+contain most of them. The one glyph that genuinely needs a different font
+(`⌫`, U+232B) uses DejaVu Sans, which ships with Kivy itself, and falls back to
+a `DEL` text label if that font is ever unavailable.

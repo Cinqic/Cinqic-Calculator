@@ -48,6 +48,8 @@ from cinqic_calculator.settings import Settings
 
 from android_constants import ANDROID_APP_VERSION
 from logic import ScreenInputRouter, resolve_data_dir
+from widgets import CalcButton, ScientificSheet  # noqa: F401  (registers kv rules)
+
 from screens.about_screen import AboutScreen
 from screens.calculator_screen import CalculatorScreen
 from screens.convert_screen import ConvertScreen
@@ -63,14 +65,16 @@ _BACK_KEYCODE = 27  # Android hardware/software back button
 # the matching Screen subclasses are instantiated below, since kv rules are
 # applied to widgets at creation time, not retroactively.
 _KV_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kv")
-for _kv_filename in ("calculator.kv", "convert.kv", "financial.kv", "history.kv", "settings.kv", "about.kv"):
+for _kv_filename in ("scientific.kv", "calculator.kv", "convert.kv", "financial.kv", "history.kv", "settings.kv", "about.kv"):
     Builder.load_file(os.path.join(_KV_DIR, _kv_filename))
 
 
 class CinqicCalculatorApp(App):
-    """Root Kivy application. Package identity (com.cinqic.calculator),
-    version (1.0.0), and versionCode (1) are set in buildozer.spec, not
-    here - this class only sets the in-app window title.
+    """Root Kivy application.
+
+    Package identity (com.cinqic.calculator), version, and versionCode are
+    set in buildozer.spec, not here - this class only sets the in-app window
+    title.
     """
 
     def build(self):

@@ -17,6 +17,12 @@ on:
 permissions:
   contents: write
 
+# Deliberately no cancel-in-progress: a release must never be interrupted
+# part-way through building or uploading its assets.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -158,8 +164,17 @@ jobs:
           echo "Certificate fingerprint(s) (also included in the release notes):"
           grep -i "sha-256" "$RUNNER_TEMP/apksigner-verify.txt" || true
 
-      - name: Inspect package identity and permissions
-        run: python3 scripts/inspect_android_apk.py Cinqic-Calculator-Android.apk
+      - name: Inspect package identity, version, and permissions
+        # The expected version comes from android_constants.py, which
+        # tests/test_packaging.py already ties to buildozer.spec and to the
+        # desktop version -- so a release built from a stale spec fails here
+        # rather than shipping with last version's number.
+        run: |
+          VERSION=$(python3 -c "import sys; sys.path.insert(0, 'android'); import android_constants as c; print(c.ANDROID_APP_VERSION)")
+          CODE=$(python3 -c "import sys; sys.path.insert(0, 'android'); import android_constants as c; print(c.ANDROID_VERSION_CODE)")
+          echo "Expecting version $VERSION (versionCode $CODE)"
+          python3 scripts/inspect_android_apk.py Cinqic-Calculator-Android.apk \
+            --expect-version "$VERSION" --expect-version-code "$CODE"
 
       - name: Generate SHA-256 checksums
         run: python3 scripts/calculate_checksum.py SHA256SUMS-Android.txt Cinqic-Calculator-Android.apk
@@ -179,6 +194,22 @@ jobs:
             permission.
 
             **Package:** `com.cinqic.calculator`
+
+            ### What's new
+            - **Live answers.** The full expression stays on screen and the
+              result appears as you type, before you press `=`.
+            - **A tactile keypad.** Keys respond with a short spring press
+              and new digits animate into the display. A reduced-motion
+              setting turns the movement off while keeping instant feedback.
+            - **Redesigned scientific mode**, now a grouped sheet that slides
+              up over the keypad instead of an endless vertical grid.
+            - **A simpler layout** -- one keypad with `=` in it, backspace
+              beside the display, and memory moved into the scientific sheet.
+            - **More maths:** parentheses, `x^y`, `Ans`, exponentials, and
+              inverse trigonometry.
+            - **Optional haptics**, using Android's built-in key-press
+              feedback -- still no permissions requested.
+            - Now licensed under **Apache License 2.0**.
 
             ### Privacy
             Works fully offline. No account, telemetry, analytics, or ads.

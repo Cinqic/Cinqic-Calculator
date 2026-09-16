@@ -14,7 +14,7 @@ from .settings_view import SettingsView
 
 _NAV_ITEMS = ["Calculator", "Convert", "Financial", "History", "Settings", "About"]
 _MIN_WIDTH = 640
-_MIN_HEIGHT = 640
+_MIN_HEIGHT = 700
 
 
 class MainWindow(tk.Tk):
@@ -43,7 +43,7 @@ class MainWindow(tk.Tk):
 
     def _restore_geometry(self):
         width = self.settings.get("window_width", 900) or 900
-        height = self.settings.get("window_height", 600) or 600
+        height = self.settings.get("window_height", 800) or 800
         x = self.settings.get("window_x")
         y = self.settings.get("window_y")
         if x is not None and y is not None:
@@ -129,7 +129,12 @@ class MainWindow(tk.Tk):
         if name == "History":
             self.views["History"].refresh()
         for nav_name, button in self.nav_buttons.items():
-            button.config(bg=self.colors["accent"] if nav_name == name else self.colors["panel"])
+            selected = nav_name == name
+            background = self.colors["accent"] if selected else self.colors["panel"]
+            button.config(
+                bg=background,
+                fg=constants.readable_text_on(background) if selected else self.colors["text_primary"],
+            )
         self.set_status(f"{name} view")
 
     def set_status(self, text: str):

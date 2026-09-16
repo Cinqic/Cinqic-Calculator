@@ -11,9 +11,11 @@ DEFAULT_SETTINGS = {
     "save_history": True,
     "degree_mode": True,
     "persist_memory": False,
+    "reduced_motion": False,
+    "haptics": True,
     "memory_value": None,
     "window_width": 900,
-    "window_height": 720,
+    "window_height": 800,
     "window_x": None,
     "window_y": None,
 }

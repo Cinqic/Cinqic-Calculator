@@ -1,15 +1,26 @@
 [build-system]
-requires = ["setuptools>=68.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "cinqic-calculator"
-version = "1.0.1"
-description = "A lightweight, private, offline desktop calculator for Windows."
+version = "1.1.0"
+description = "A private, offline-first calculator for Windows, Linux, and Android."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.10"
 dependencies = []
+
+classifiers = [
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+
+[project.scripts]
+cinqic-calculator = "cinqic_calculator.app:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

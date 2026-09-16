@@ -97,6 +97,16 @@ def main() -> int:
         default=[],
         help="Permit an additional permission beyond ALLOWED_PERMISSIONS (repeatable).",
     )
+    parser.add_argument(
+        "--expect-version",
+        help="Fail unless the APK's versionName matches exactly. Used by the "
+        "release workflow so a build from a stale buildozer.spec cannot ship.",
+    )
+    parser.add_argument(
+        "--expect-version-code",
+        type=int,
+        help="Fail unless the APK's versionCode matches exactly.",
+    )
     args = parser.parse_args()
 
     if not args.apk_path.is_file():
@@ -118,6 +128,14 @@ def main() -> int:
 
     if not info.get("launchable_activity"):
         problems.append("no launchable activity found (app would not appear in the launcher)")
+
+    if args.expect_version and info.get("version_name") != args.expect_version:
+        problems.append(f"versionName is {info.get('version_name')!r}, expected {args.expect_version!r}")
+
+    if args.expect_version_code is not None:
+        actual_code = info.get("version_code")
+        if actual_code is None or int(actual_code) != args.expect_version_code:
+            problems.append(f"versionCode is {actual_code!r}, expected {args.expect_version_code}")
 
     print("APK inspection:")
     print(f"  file            : {args.apk_path}")
