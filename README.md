@@ -24,8 +24,9 @@ without AI.** See [About Juniper](#juniper-relationship) below.
 - **Live answers.** The expression you are building stays on screen and its
   result appears as you type, before you press `=`.
 - **A tactile Android keypad.** Keys respond with a short spring press, new
-  digits animate into the display, and a reduced-motion setting turns all of
-  it off while keeping instant feedback.
+  digits animate into the display, and optional haptic feedback confirms each
+  touch. A reduced-motion setting turns the movement off while keeping instant
+  feedback.
 - **A redesigned scientific mode** that slides up over the keypad as a grouped
   sheet, instead of expanding the screen into an endless grid of small keys.
 - **More maths:** parentheses, `x^y`, `Ans`, `eˣ`, `10ˣ`, inverse
@@ -57,8 +58,11 @@ change worth knowing about.
   splitting, simple and compound interest — clearly labelled as estimates.
 - **Local calculation history** (up to 200 entries), fully optional.
 - **Accessibility** — reduced motion, keyboard navigation with visible focus,
-  adaptive text sizing for long results, and states never signalled by colour
-  alone.
+  adaptive text sizing for long results, WCAG AA contrast in both themes, and
+  states never signalled by colour alone.
+- **Optional haptics on Android**, using Android's built-in key-press feedback
+  — which needs no permission, unlike the vibration APIs this app deliberately
+  avoids.
 - **Dark, light, and system themes.**
 - **Fully offline.** No account, no telemetry, no analytics, no ads.
 
