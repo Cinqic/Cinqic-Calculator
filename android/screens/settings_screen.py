@@ -1,6 +1,9 @@
-"""Settings screen: theme (dark/light - no "system" option on Android,
-since cinqic_calculator.constants.detect_system_theme() is Windows-only via
-winreg), save_history toggle, and persist_memory toggle.
+"""Settings screen: theme, history, memory, motion, and haptics.
+
+Theme is dark/light only, with no "system" option: the shared
+``detect_system_theme()`` reads a Windows registry key or a freedesktop
+``gsettings`` value, and neither exists on Android, so a "system" choice
+here would silently mean "dark".
 
 The persist_memory toggle's on/off semantics are delegated entirely to
 android/logic.py's set_persist_memory(), which replicates the desktop

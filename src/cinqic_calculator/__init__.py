@@ -1,3 +1,3 @@
-"""Cinqic Calculator - a private, offline desktop calculator for Windows."""
+"""Cinqic Calculator - a private, offline-first calculator for Windows, Linux, and Android."""
 
 __version__ = "1.1.0"
