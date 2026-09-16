@@ -31,8 +31,9 @@ versioned independently.
   implemented; the test covering it never pressed `=` twice.
 - **A clear key that says what it does** — it shows `CE` while an entry is
   being edited and `AC` when it would clear the whole calculation.
-- **The pending operator is now visible** on both platforms, indicated by fill
-  and relief rather than by colour alone.
+- **The pending operator is now visible** in both interfaces. On the desktop
+  it is shown by a filled background and a sunken relief; on Android the key
+  inverts to a bright fill with a dark label. Neither relies on hue alone.
 - Long values stay readable: the display font shrinks as numbers grow.
 
 ### Calculations
